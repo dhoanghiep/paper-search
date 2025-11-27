@@ -39,6 +39,27 @@ async def trigger_process_sync(limit: int = 10):
     result = process_new_papers(limit)
     return {"status": "completed", "result": result}
 
+@router.post("/report/daily")
+async def generate_daily_report_endpoint():
+    """Generate daily report"""
+    from app.reports_job import generate_daily_report
+    report = generate_daily_report()
+    return {"status": "completed", "report_length": len(report)}
+
+@router.post("/report/weekly")
+async def generate_weekly_report_endpoint():
+    """Generate weekly report"""
+    from app.reports_job import generate_weekly_report
+    report = generate_weekly_report()
+    return {"status": "completed", "report_length": len(report)}
+
+@router.post("/email/test")
+async def send_test_email(to_email: str):
+    """Send test email"""
+    from app.notifications import send_email
+    success = send_email(to_email, "Test Email", "This is a test email from Paper Search API")
+    return {"status": "sent" if success else "failed"}
+
 @router.get("/status")
 async def job_status():
     """Get job status"""
@@ -58,3 +79,19 @@ async def job_status():
         }
     finally:
         db.close()
+
+@router.get("/scheduler/status")
+async def scheduler_status():
+    """Get scheduler status"""
+    try:
+        from app.scheduler import scheduler
+        jobs = []
+        for job in scheduler.get_jobs():
+            jobs.append({
+                "id": job.id,
+                "name": job.name,
+                "next_run": str(job.next_run_time) if job.next_run_time else None
+            })
+        return {"status": "running", "jobs": jobs}
+    except Exception as e:
+        return {"status": "not_running", "error": str(e)}

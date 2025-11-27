@@ -2,14 +2,39 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 from app.routers import papers, categories, reports, jobs
+from contextlib import asynccontextmanager
+import logging
 
-Base.metadata.create_all(bind=engine)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Paper Search API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    Base.metadata.create_all(bind=engine)
+    
+    # Start scheduler
+    try:
+        from app.scheduler import start_scheduler
+        start_scheduler()
+        logger.info("Scheduler started")
+    except Exception as e:
+        logger.warning(f"Scheduler not started: {e}")
+    
+    yield
+    
+    # Shutdown
+    try:
+        from app.scheduler import stop_scheduler
+        stop_scheduler()
+    except:
+        pass
+
+app = FastAPI(title="Paper Search API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -22,7 +47,7 @@ app.include_router(jobs.router)
 
 @app.get("/")
 def root():
-    return {"message": "Paper Search API"}
+    return {"message": "Paper Search API", "status": "running"}
 
 @app.get("/stats")
 def get_stats():
