@@ -70,10 +70,9 @@ def process_paper(paper_id: int) -> Dict[str, Any]:
             "existing_categories": categories
         })
         
-        # Summarize
+        # Summarize - pass paper_id, not title/abstract
         summary = summarization_client.call("summarize_abstract", {
-            "title": paper.title,
-            "abstract": paper.abstract
+            "paper_id": paper_id
         })
         
         # Update paper
