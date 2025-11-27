@@ -1,68 +1,11 @@
 {
-  "name": "database-mcp",
-  "version": "1.0.0",
-  "description": "Database management MCP server for paper search",
-  "tools": [
-    {
-      "name": "query_papers",
-      "description": "Query papers with filters (category, author, keyword)",
-      "parameters": {
-        "filters": {
-          "type": "object",
-          "description": "Filter criteria (category, author, keyword)"
-        },
-        "limit": {
-          "type": "integer",
-          "default": 10
-        },
-        "offset": {
-          "type": "integer",
-          "default": 0
-        }
+  "mcpServers": {
+    "database": {
+      "command": "/workshop/paper-search/venv/bin/python3",
+      "args": ["/workshop/paper-search/mcp_servers/database/server.py"],
+      "env": {
+        "DATABASE_URL": "postgresql://paper_user:paper_pass@localhost:5432/paper_search"
       }
-    },
-    {
-      "name": "get_paper",
-      "description": "Get single paper by ID",
-      "parameters": {
-        "paper_id": {
-          "type": "integer",
-          "required": true
-        }
-      }
-    },
-    {
-      "name": "add_paper",
-      "description": "Add new paper to database",
-      "parameters": {
-        "paper_data": {
-          "type": "object",
-          "required": true,
-          "description": "Paper data (arxiv_id, title, authors, abstract, published, pdf_url)"
-        }
-      }
-    },
-    {
-      "name": "get_categories",
-      "description": "List all categories"
-    },
-    {
-      "name": "add_category",
-      "description": "Create new category",
-      "parameters": {
-        "name": {
-          "type": "string",
-          "required": true
-        },
-        "description": {
-          "type": "string",
-          "default": ""
-        }
-      }
-    },
-    {
-      "name": "get_statistics",
-      "description": "Get database statistics (counts, recent papers)"
     }
-  ]
+  }
 }
