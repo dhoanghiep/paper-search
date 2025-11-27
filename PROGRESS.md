@@ -17,6 +17,20 @@
 
 ---
 
+## Phase 1.5: ArXiv Scraper ✅ COMPLETED
+
+- [x] XML parsing for arXiv API responses
+- [x] Rate limiting (3 req/sec)
+- [x] Error handling and retries
+- [x] CLI command for scraping
+- [x] API endpoint for scraping
+- [x] Database integration
+- [x] Tested with real data (10 papers fetched successfully)
+
+**Completed:** 2025-11-27
+
+---
+
 ## Phase 2: Frontend Interface 🔄 IN PROGRESS
 
 ### Frontend Setup
@@ -155,4 +169,4 @@ None currently.
 - Using FastAPI + PostgreSQL stack
 - MCP servers will be separate processes
 - Need to decide on LLM provider (AWS Bedrock recommended)
-- Consider rate limiting for arXiv API (max 3 requests/second)
+- arXiv scraper implemented with rate limiting (max 3 requests/second)
