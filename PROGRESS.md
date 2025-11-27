@@ -77,6 +77,21 @@
 
 **Status:** NOT STARTED
 
+### Frontend Interface MCP Server
+- [ ] Choose frontend framework (React/Vue/Svelte)
+- [ ] Set up build tooling (Vite/Webpack)
+- [ ] Create dashboard page
+- [ ] Create papers list page
+- [ ] Create paper detail page
+- [ ] Create category management page
+- [ ] Create reports viewer
+- [ ] Create settings page
+- [ ] Implement search/filter functionality
+- [ ] Add responsive design
+- [ ] Test with Kiro CLI
+
+**Status:** NOT STARTED
+
 ---
 
 ## Phase 3: Integration & Automation

@@ -117,11 +117,67 @@ ArXiv MCP → Database MCP → Summarization MCP → Classification MCP
 
 ---
 
+---
+
+## 7. Frontend Interface MCP Server
+**Purpose:** Web UI for viewing and managing papers
+**Tools:**
+- `serve_frontend` - Serve static files
+- `get_ui_config` - Frontend configuration
+
+**Resources:**
+- React/Vue/Svelte components
+- API client for backend
+
+**Pages:**
+- Dashboard - Recent papers overview
+- Papers List - Searchable/filterable table
+- Paper Detail - Full paper view with summary
+- Categories - Manage categories
+- Reports - View/generate reports
+- Settings - Email preferences, API keys
+
+**Status:** NOT STARTED
+
+---
+
+## Build Order Priority
+
+1. **ArXiv MCP Server** (CRITICAL) - Data ingestion
+2. **Database MCP Server** (CRITICAL) - Data persistence
+3. **Summarization MCP Server** (HIGH) - Core feature
+4. **Classification MCP Server** (HIGH) - Core feature
+5. **Report Generation MCP Server** (MEDIUM) - User value
+6. **Email Notification MCP Server** (LOW) - Nice to have
+7. **Frontend Interface MCP Server** (MEDIUM) - User interface
+
+---
+
+## Integration Points
+
+```
+ArXiv MCP → Database MCP → Summarization MCP → Classification MCP
+                ↓
+         Report Generation MCP → Email MCP
+                ↓
+         Frontend Interface MCP
+```
+
+---
+
 ## Technical Requirements
 
+**Backend:**
 - Python 3.10+
 - MCP SDK
 - FastAPI for MCP server hosting
 - PostgreSQL client
 - httpx for HTTP requests
 - boto3 for AWS Bedrock (if using)
+
+**Frontend:**
+- React 18+ or Vue 3+ or Svelte
+- TailwindCSS or Material-UI
+- Axios/Fetch for API calls
+- React Query or SWR for data fetching
+- React Router or Vue Router
