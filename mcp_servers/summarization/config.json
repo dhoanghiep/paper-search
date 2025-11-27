@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "summarization": {
+      "command": "/workshop/paper-search/venv/bin/python3",
+      "args": ["/workshop/paper-search/mcp_servers/summarization/server.py"],
+      "env": {
+        "DATABASE_URL": "postgresql://paper_user:paper_pass@localhost:5432/paper_search",
+        "AWS_REGION": "us-east-1"
+      }
+    }
+  }
+}
