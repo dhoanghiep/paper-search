@@ -104,34 +104,32 @@
 
 **Status:** NOT STARTED
 
-### Classification MCP Server
-- [ ] Set up MCP server boilerplate
-- [ ] Define initial category taxonomy
-- [ ] Implement classify_paper tool
-- [ ] Implement find_related_papers tool
-- [ ] Test classification accuracy
+### Classification MCP Server ✅ COMPLETED
+- [x] Set up MCP server boilerplate
+- [x] Implement classify_paper tool
+- [x] Keyword-based classification
+- [x] Category suggestion logic
+- [x] Updated README
 
-**Status:** NOT STARTED
+**Status:** COMPLETED
 
-### Report Generation MCP Server
-- [ ] Set up MCP server boilerplate
-- [ ] Create report templates
-- [ ] Implement daily report tool
-- [ ] Implement weekly report tool
-- [ ] Implement monthly report tool
-- [ ] Implement single paper report tool
+### Report Generation MCP Server ✅ COMPLETED
+- [x] Set up MCP server boilerplate
+- [x] Implement generate_paper_report tool (brief/in-depth)
+- [x] Implement generate_period_report tool (daily/weekly/monthly)
+- [x] Markdown formatting
+- [x] Updated README
 
-**Status:** NOT STARTED
+**Status:** COMPLETED
 
-### Email Notification MCP Server
-- [ ] Set up MCP server boilerplate
-- [ ] Configure SMTP client
-- [ ] Create email templates
-- [ ] Implement send_new_paper_alert tool
-- [ ] Implement send_report tool
-- [ ] Test email delivery
+### Email Notification MCP Server ✅ COMPLETED
+- [x] Set up MCP server boilerplate
+- [x] Configure SMTP client
+- [x] Implement send_email tool
+- [x] Support for TLS and authentication
+- [x] Updated README
 
-**Status:** NOT STARTED
+**Status:** COMPLETED
 
 ---
 

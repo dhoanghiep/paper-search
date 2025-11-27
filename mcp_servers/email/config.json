@@ -1,0 +1,12 @@
+{
+  "name": "email-mcp",
+  "version": "1.0.0",
+  "port": 3006,
+  "tools": [
+    "send_new_paper_alert",
+    "send_report",
+    "send_digest",
+    "configure_alerts"
+  ],
+  "smtp_provider": "gmail"
+}

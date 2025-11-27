@@ -1,0 +1,13 @@
+{
+  "name": "classification-mcp",
+  "version": "1.0.0",
+  "port": 3004,
+  "tools": [
+    "classify_paper",
+    "suggest_category",
+    "find_similar_papers",
+    "get_category_distribution",
+    "reclassify_all"
+  ],
+  "method": "keyword"
+}
