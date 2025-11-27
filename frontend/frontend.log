@@ -1,3 +1,12 @@
-127.0.0.1 - - [27/Nov/2025 01:45:17] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [27/Nov/2025 01:45:30] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [27/Nov/2025 01:45:58] "GET /js/api.js HTTP/1.1" 200 -
+Traceback (most recent call last):
+  File "/workshop/paper-search/frontend/server.py", line 14, in <module>
+    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+  File "/usr/lib64127.0.0.1 - - [27/Nov/2025 01:53:30] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [27/Nov/2025 01:53:31] "GET /js/app.js HTTP/1.1" 200 -
+127.0.0.1 - - [27/Nov/2025 01:53:31] "GET /css/styles.css HTTP/1.1" 200 -
+127.0.0.1 - - [27/Nov/2025 01:53:31] "GET /js/components/Categories.js HTTP/1.1" 200 -
+127.0.0.1 - - [27/Nov/2025 01:53:31] "GET /js/components/PapersList.js HTTP/1.1" 200 -
+127.0.0.1 - - [27/Nov/2025 01:53:31] "GET /js/components/Reports.js HTTP/1.1" 200 -
+127.0.0.1 - - [27/Nov/2025 01:53:31] "GET /js/components/PaperDetail.js HTTP/1.1" 200 -
+127.0.0.1 - - [27/Nov/2025 01:53:31] "GET /js/components/Dashboard.js HTTP/1.1" 200 -
+127.0.0.1 - - [27/Nov/2025 01:53:31] "GET /js/api.js HTTP/1.1" 200 -

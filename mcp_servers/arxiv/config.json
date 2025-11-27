@@ -1,0 +1,50 @@
+{
+  "name": "arxiv-mcp",
+  "version": "1.0.0",
+  "description": "ArXiv paper search and retrieval MCP server",
+  "tools": [
+    {
+      "name": "search_papers",
+      "description": "Search arXiv papers by query string",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "description": "Search query for papers",
+          "required": true
+        },
+        "max_results": {
+          "type": "integer",
+          "description": "Maximum number of results to return",
+          "default": 10
+        }
+      }
+    },
+    {
+      "name": "get_recent_papers",
+      "description": "Get recent papers from arXiv, optionally filtered by category",
+      "parameters": {
+        "category": {
+          "type": "string",
+          "description": "arXiv category (e.g., cs.AI, math.CO) or 'all'",
+          "default": "all"
+        },
+        "max_results": {
+          "type": "integer",
+          "description": "Maximum number of results to return",
+          "default": 10
+        }
+      }
+    },
+    {
+      "name": "get_paper_details",
+      "description": "Get detailed metadata for a specific arXiv paper",
+      "parameters": {
+        "arxiv_id": {
+          "type": "string",
+          "description": "arXiv paper ID (e.g., 2301.12345)",
+          "required": true
+        }
+      }
+    }
+  ]
+}
