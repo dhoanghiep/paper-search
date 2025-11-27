@@ -59,7 +59,19 @@
 
 ---
 
-## Phase 3: MCP Servers
+## Phase 3: MCP Servers 🔄 READY TO START
+
+**Detailed Plan:** See `PHASE3_PLAN.md`
+
+### Priority Order:
+1. ArXiv MCP Server (1-2h) - Expose scraping tools
+2. Database MCP Server (2-3h) - Query and management
+3. Summarization MCP Server (2-3h) - AI summaries
+4. Classification MCP Server (2-3h) - Auto-categorization
+5. Report Generation MCP Server (2h) - Daily/weekly reports
+6. Email Notification MCP Server (1-2h) - Alerts
+
+**Total Estimated Time:** 10-15 hours
 
 ### ArXiv MCP Server
 - [ ] Set up MCP server boilerplate
