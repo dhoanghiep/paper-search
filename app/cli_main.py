@@ -1,0 +1,297 @@
+#!/usr/bin/env python3
+import click
+import asyncio
+from rich.console import Console
+from rich.table import Table
+from rich.progress import track
+from datetime import datetime, timedelta
+
+console = Console()
+
+@click.group()
+@click.version_option(version="1.0.0")
+def cli():
+    """Paper Search CLI - Manage research papers from multiple sources"""
+    pass
+
+# ============= SCRAPE COMMANDS =============
+
+@cli.group()
+def scrape():
+    """Scrape papers from various sources"""
+    pass
+
+@scrape.command()
+@click.option('--max-results', default=10, help='Maximum papers to fetch')
+def arxiv(max_results):
+    """Scrape papers from arXiv"""
+    from app.agents.scraper import ArxivScraper
+    from app.database import SessionLocal
+    
+    db = SessionLocal()
+    try:
+        console.print(f"[cyan]Scraping {max_results} papers from arXiv...[/cyan]")
+        scraper = ArxivScraper()
+        papers = asyncio.run(scraper.fetch_recent_papers(max_results))
+        scraper.save_papers(db, papers)
+        console.print(f"[green]✓ Successfully scraped {len(papers)} papers[/green]")
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+    finally:
+        db.close()
+
+@scrape.command()
+@click.option('--max-results', default=10, help='Maximum papers to fetch')
+def biorxiv(max_results):
+    """Scrape papers from bioRxiv"""
+    from app.agents.biorxiv_scraper import BiorxivScraper
+    from app.database import SessionLocal
+    
+    db = SessionLocal()
+    try:
+        console.print(f"[cyan]Scraping {max_results} papers from bioRxiv...[/cyan]")
+        scraper = BiorxivScraper()
+        papers = asyncio.run(scraper.fetch_recent_papers(max_results))
+        scraper.save_papers(db, papers)
+        console.print(f"[green]✓ Successfully scraped {len(papers)} papers[/green]")
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+    finally:
+        db.close()
+
+@scrape.command()
+@click.option('--max-results', default=10, help='Maximum papers to fetch')
+@click.option('--query', default='cancer OR diabetes', help='Search query')
+def pubmed(max_results, query):
+    """Scrape papers from PubMed"""
+    from app.agents.pubmed_scraper import PubmedScraper
+    from app.database import SessionLocal
+    
+    db = SessionLocal()
+    try:
+        console.print(f"[cyan]Scraping {max_results} papers from PubMed (query: {query})...[/cyan]")
+        scraper = PubmedScraper()
+        papers = asyncio.run(scraper.fetch_recent_papers(max_results, query))
+        scraper.save_papers(db, papers)
+        console.print(f"[green]✓ Successfully scraped {len(papers)} papers[/green]")
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+    finally:
+        db.close()
+
+@scrape.command()
+@click.option('--max-results', default=10, help='Maximum papers per source')
+def all(max_results):
+    """Scrape papers from all sources"""
+    sources = ['arxiv', 'biorxiv', 'pubmed']
+    for source in track(sources, description="Scraping sources..."):
+        ctx = click.get_current_context()
+        ctx.invoke(globals()[source], max_results=max_results)
+
+# ============= PROCESS COMMANDS =============
+
+@cli.command()
+@click.option('--limit', default=10, help='Number of papers to process')
+def process(limit):
+    """Process unprocessed papers (classify + summarize)"""
+    from app.pipeline import process_new_papers
+    
+    console.print(f"[cyan]Processing up to {limit} papers...[/cyan]")
+    result = process_new_papers(limit)
+    console.print(f"[green]✓ Processed: {result['processed']}[/green]")
+    if result['errors'] > 0:
+        console.print(f"[yellow]⚠ Errors: {result['errors']}[/yellow]")
+
+# ============= LIST COMMANDS =============
+
+@cli.command()
+@click.option('--limit', default=20, help='Number of papers to show')
+@click.option('--unprocessed', is_flag=True, help='Show only unprocessed papers')
+def list(limit, unprocessed):
+    """List papers"""
+    from app.database import SessionLocal
+    from app.models import Paper
+    
+    db = SessionLocal()
+    try:
+        query = db.query(Paper)
+        if unprocessed:
+            query = query.filter((Paper.summary == None) | (Paper.summary == ""))
+        papers = query.order_by(Paper.created_at.desc()).limit(limit).all()
+        
+        table = Table(title=f"Papers ({len(papers)} shown)")
+        table.add_column("ID", style="cyan")
+        table.add_column("Title", style="white", max_width=50)
+        table.add_column("Source", style="yellow")
+        table.add_column("Processed", style="green")
+        
+        for paper in papers:
+            source = "arXiv" if "arxiv" in paper.arxiv_id.lower() else \
+                     "PubMed" if "PMID" in paper.arxiv_id else "bioRxiv"
+            processed = "✓" if paper.summary else "✗"
+            table.add_row(str(paper.id), paper.title[:50], source, processed)
+        
+        console.print(table)
+    finally:
+        db.close()
+
+@cli.command()
+@click.argument('query')
+def search(query):
+    """Search papers by keyword"""
+    from app.database import SessionLocal
+    from app.models import Paper
+    
+    db = SessionLocal()
+    try:
+        papers = db.query(Paper).filter(
+            (Paper.title.ilike(f"%{query}%")) | (Paper.abstract.ilike(f"%{query}%"))
+        ).limit(20).all()
+        
+        console.print(f"[cyan]Found {len(papers)} papers matching '{query}'[/cyan]\n")
+        
+        for paper in papers:
+            console.print(f"[bold]{paper.id}. {paper.title}[/bold]")
+            console.print(f"   {paper.arxiv_id} | {paper.published_date}")
+            console.print()
+    finally:
+        db.close()
+
+# ============= VIEW COMMANDS =============
+
+@cli.command()
+@click.argument('paper_id', type=int)
+@click.option('--full', is_flag=True, help='Show full abstract')
+def show(paper_id, full):
+    """Show paper details"""
+    from app.database import SessionLocal
+    from app.models import Paper
+    
+    db = SessionLocal()
+    try:
+        paper = db.query(Paper).filter(Paper.id == paper_id).first()
+        if not paper:
+            console.print(f"[red]✗ Paper {paper_id} not found[/red]")
+            return
+        
+        console.print(f"\n[bold cyan]Paper #{paper.id}[/bold cyan]")
+        console.print(f"[bold]{paper.title}[/bold]\n")
+        console.print(f"[yellow]ID:[/yellow] {paper.arxiv_id}")
+        console.print(f"[yellow]Authors:[/yellow] {paper.authors}")
+        console.print(f"[yellow]Published:[/yellow] {paper.published_date}")
+        console.print(f"[yellow]URL:[/yellow] {paper.pdf_url}\n")
+        
+        if full:
+            console.print(f"[bold]Abstract:[/bold]")
+            console.print(paper.abstract)
+        else:
+            console.print(f"[bold]Abstract:[/bold] {paper.abstract[:200]}...")
+        
+        if paper.summary:
+            console.print(f"\n[bold]Summary:[/bold]")
+            console.print(paper.summary)
+        else:
+            console.print(f"\n[yellow]⚠ Not yet processed[/yellow]")
+    finally:
+        db.close()
+
+@cli.command()
+def stats():
+    """Show database statistics"""
+    from app.database import SessionLocal
+    from app.models import Paper, Category
+    
+    db = SessionLocal()
+    try:
+        total = db.query(Paper).count()
+        processed = db.query(Paper).filter(Paper.summary != None, Paper.summary != "").count()
+        week_ago = datetime.now() - timedelta(days=7)
+        recent = db.query(Paper).filter(Paper.created_at >= week_ago).count()
+        categories = db.query(Category).count()
+        
+        table = Table(title="Database Statistics")
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="green")
+        
+        table.add_row("Total Papers", str(total))
+        table.add_row("Processed Papers", str(processed))
+        table.add_row("Unprocessed Papers", str(total - processed))
+        table.add_row("Papers This Week", str(recent))
+        table.add_row("Categories", str(categories))
+        
+        console.print(table)
+    finally:
+        db.close()
+
+# ============= REPORT COMMANDS =============
+
+@cli.group()
+def report():
+    """Generate reports"""
+    pass
+
+@report.command()
+@click.option('--save', help='Save to file')
+def daily(save):
+    """Generate daily report"""
+    from app.reports_job import generate_daily_report
+    
+    console.print("[cyan]Generating daily report...[/cyan]")
+    report_content = generate_daily_report()
+    
+    if save:
+        with open(save, 'w') as f:
+            f.write(report_content)
+        console.print(f"[green]✓ Report saved to {save}[/green]")
+    else:
+        console.print(report_content)
+
+@report.command()
+@click.option('--save', help='Save to file')
+def weekly(save):
+    """Generate weekly report"""
+    from app.reports_job import generate_weekly_report
+    
+    console.print("[cyan]Generating weekly report...[/cyan]")
+    report_content = generate_weekly_report()
+    
+    if save:
+        with open(save, 'w') as f:
+            f.write(report_content)
+        console.print(f"[green]✓ Report saved to {save}[/green]")
+    else:
+        console.print(report_content)
+
+# ============= JOBS COMMANDS =============
+
+@cli.group()
+def jobs():
+    """Job management"""
+    pass
+
+@jobs.command()
+def status():
+    """Show job status"""
+    from app.database import SessionLocal
+    from app.models import Paper
+    
+    db = SessionLocal()
+    try:
+        total = db.query(Paper).count()
+        processed = db.query(Paper).filter(Paper.summary != None, Paper.summary != "").count()
+        
+        table = Table(title="Job Status")
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="green")
+        
+        table.add_row("Total Papers", str(total))
+        table.add_row("Processed", str(processed))
+        table.add_row("Unprocessed", str(total - processed))
+        table.add_row("Processing Rate", f"{(processed/total*100):.1f}%" if total > 0 else "0%")
+        
+        console.print(table)
+    finally:
+        db.close()
+
+if __name__ == '__main__':
+    cli()
