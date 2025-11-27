@@ -17,7 +17,39 @@
 
 ---
 
-## Phase 2: MCP Servers 🔄 IN PROGRESS
+## Phase 2: Frontend Interface 🔄 IN PROGRESS
+
+### Frontend Setup
+- [ ] Choose frontend framework (React recommended)
+- [ ] Set up Vite + React + TypeScript
+- [ ] Install TailwindCSS
+- [ ] Configure API client
+- [ ] Set up routing
+
+**Status:** NOT STARTED
+
+### Core Pages
+- [ ] Dashboard page
+- [ ] Papers list page
+- [ ] Paper detail page
+- [ ] Category management page
+- [ ] Reports viewer page
+- [ ] Settings page
+
+**Status:** NOT STARTED
+
+### Features
+- [ ] Search functionality
+- [ ] Filter by category
+- [ ] Sort papers
+- [ ] Responsive design
+- [ ] Dark mode toggle
+
+**Status:** NOT STARTED
+
+---
+
+## Phase 3: MCP Servers
 
 ### ArXiv MCP Server
 - [ ] Set up MCP server boilerplate
@@ -77,43 +109,15 @@
 
 **Status:** NOT STARTED
 
-### Frontend Interface MCP Server
-- [ ] Choose frontend framework (React/Vue/Svelte)
-- [ ] Set up build tooling (Vite/Webpack)
-- [ ] Create dashboard page
-- [ ] Create papers list page
-- [ ] Create paper detail page
-- [ ] Create category management page
-- [ ] Create reports viewer
-- [ ] Create settings page
-- [ ] Implement search/filter functionality
-- [ ] Add responsive design
-- [ ] Test with Kiro CLI
-
-**Status:** NOT STARTED
-
 ---
 
-## Phase 3: Integration & Automation
+## Phase 4: Integration & Automation
 
 - [ ] Create scheduled jobs for scraping
 - [ ] Build paper processing pipeline
 - [ ] Implement automatic categorization
 - [ ] Set up daily report generation
 - [ ] Configure email notifications
-
-**Status:** NOT STARTED
-
----
-
-## Phase 4: Web Interface
-
-- [ ] Design UI mockups
-- [ ] Build paper listing page
-- [ ] Build paper detail page
-- [ ] Build category management
-- [ ] Build report viewer
-- [ ] Add search functionality
 
 **Status:** NOT STARTED
 
@@ -134,9 +138,9 @@
 
 ## Current Focus
 
-**Working on:** Phase 1 Foundation - COMPLETED ✅
+**Working on:** Phase 2 - Frontend Interface
 
-**Next up:** Phase 2 - Build ArXiv MCP Server
+**Next up:** Build React frontend with dashboard and papers list
 
 ---
 

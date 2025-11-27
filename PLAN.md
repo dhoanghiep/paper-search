@@ -143,13 +143,13 @@ ArXiv MCP → Database MCP → Summarization MCP → Classification MCP
 
 ## Build Order Priority
 
-1. **ArXiv MCP Server** (CRITICAL) - Data ingestion
-2. **Database MCP Server** (CRITICAL) - Data persistence
-3. **Summarization MCP Server** (HIGH) - Core feature
-4. **Classification MCP Server** (HIGH) - Core feature
-5. **Report Generation MCP Server** (MEDIUM) - User value
-6. **Email Notification MCP Server** (LOW) - Nice to have
-7. **Frontend Interface MCP Server** (MEDIUM) - User interface
+1. **Frontend Interface MCP Server** (CRITICAL) - User interface FIRST
+2. **ArXiv MCP Server** (CRITICAL) - Data ingestion
+3. **Database MCP Server** (CRITICAL) - Data persistence
+4. **Summarization MCP Server** (HIGH) - Core feature
+5. **Classification MCP Server** (HIGH) - Core feature
+6. **Report Generation MCP Server** (MEDIUM) - User value
+7. **Email Notification MCP Server** (LOW) - Nice to have
 
 ---
 
