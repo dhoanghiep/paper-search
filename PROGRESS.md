@@ -59,19 +59,19 @@
 
 ---
 
-## Phase 3: MCP Servers 🔄 IN PROGRESS
+## Phase 3: MCP Servers ✅ COMPLETED
 
 **Detailed Plan:** See `PHASE3_PLAN.md`
 
 ### Priority Order:
-1. ArXiv MCP Server (1-2h) - Expose scraping tools ✅
-2. Database MCP Server (2-3h) - Query and management ✅
-3. Summarization MCP Server (2-3h) - AI summaries
-4. Classification MCP Server (2-3h) - Auto-categorization
-5. Report Generation MCP Server (2h) - Daily/weekly reports
-6. Email Notification MCP Server (1-2h) - Alerts
+1. ArXiv MCP Server ✅
+2. Database MCP Server ✅
+3. Summarization MCP Server ✅
+4. Classification MCP Server ✅
+5. Report Generation MCP Server ✅
+6. Email Notification MCP Server ✅
 
-**Total Estimated Time:** 10-15 hours
+**Completed:** 2025-11-27
 
 ### ArXiv MCP Server ✅ COMPLETED
 - [x] Set up MCP server boilerplate
@@ -81,28 +81,28 @@
 - [x] Add XML parsing for arXiv responses
 - [x] Test with Kiro CLI
 
-**Status:** COMPLETED
-
 ### Database MCP Server ✅ COMPLETED
 - [x] Set up MCP server boilerplate
-- [x] Implement query_papers tool
+- [x] Implement query_papers tool (9 tools total)
 - [x] Implement get_paper tool
 - [x] Implement add_paper tool
+- [x] Implement update_paper tool
 - [x] Implement get_categories tool
 - [x] Implement add_category tool
+- [x] Implement assign_category tool
+- [x] Implement save_report tool
 - [x] Implement get_statistics tool
 - [x] Test with real database
 
-**Status:** COMPLETED
-
-### Summarization MCP Server
-- [ ] Set up MCP server boilerplate
-- [ ] Configure LLM client (Bedrock/OpenAI)
-- [ ] Implement summarize_paper tool
-- [ ] Create prompt templates
-- [ ] Test with sample papers
-
-**Status:** NOT STARTED
+### Summarization MCP Server ✅ COMPLETED
+- [x] Set up MCP server boilerplate
+- [x] Configure AWS Bedrock (Claude 3 Haiku)
+- [x] Implement summarize_abstract tool
+- [x] Implement summarize_detailed tool
+- [x] Implement extract_key_points tool
+- [x] Implement generate_tldr tool
+- [x] Implement batch_summarize tool
+- [x] Test with MCP protocol
 
 ### Classification MCP Server ✅ COMPLETED
 - [x] Set up MCP server boilerplate
@@ -111,8 +111,6 @@
 - [x] Category suggestion logic
 - [x] Updated README
 
-**Status:** COMPLETED
-
 ### Report Generation MCP Server ✅ COMPLETED
 - [x] Set up MCP server boilerplate
 - [x] Implement generate_paper_report tool (brief/in-depth)
@@ -120,16 +118,12 @@
 - [x] Markdown formatting
 - [x] Updated README
 
-**Status:** COMPLETED
-
 ### Email Notification MCP Server ✅ COMPLETED
 - [x] Set up MCP server boilerplate
 - [x] Configure SMTP client
 - [x] Implement send_email tool
 - [x] Support for TLS and authentication
 - [x] Updated README
-
-**Status:** COMPLETED
 
 ---
 
@@ -160,9 +154,9 @@
 
 ## Current Focus
 
-**Working on:** Phase 3 - MCP Servers
+**Working on:** Phase 4 - Integration & Automation
 
-**Next up:** Build MCP servers for enhanced functionality
+**Next up:** Create scheduled jobs and processing pipeline
 
 ---
 
@@ -175,6 +169,7 @@ None currently.
 ## Notes
 
 - Using FastAPI + PostgreSQL stack
-- MCP servers will be separate processes
-- Need to decide on LLM provider (AWS Bedrock recommended)
-- arXiv scraper implemented with rate limiting (max 3 requests/second)
+- 6 MCP servers implemented with JSON-RPC 2.0 protocol
+- AWS Bedrock (Claude 3 Haiku) for summarization
+- arXiv scraper with rate limiting (max 3 requests/second)
+- All MCP servers tested and working
