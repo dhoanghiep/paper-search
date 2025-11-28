@@ -88,6 +88,64 @@ def all(max_results):
         ctx = click.get_current_context()
         ctx.invoke(globals()[source], max_results=max_results)
 
+@scrape.command()
+@click.argument('url')
+def add(url):
+    """Add a specific bioRxiv paper by URL or DOI"""
+    import re
+    import httpx
+    from datetime import datetime
+    from app.database import SessionLocal
+    from app.models import Paper
+    
+    db = SessionLocal()
+    try:
+        # Extract DOI from URL (format: 10.1101/2024.11.20.624567)
+        doi_match = re.search(r'10\.\d+/[\d.]+', url)
+        if not doi_match:
+            console.print("[red]✗ Invalid bioRxiv URL or DOI[/red]")
+            return
+        
+        doi = doi_match.group(0)
+        console.print(f"[cyan]Fetching paper with DOI: {doi}...[/cyan]")
+        
+        # Check if already exists
+        existing = db.query(Paper).filter(Paper.arxiv_id == doi).first()
+        if existing:
+            console.print(f"[yellow]⚠ Paper already exists (ID: {existing.id})[/yellow]")
+            return
+        
+        # Fetch from bioRxiv API
+        api_url = f"https://api.biorxiv.org/details/biorxiv/{doi}"
+        response = httpx.get(api_url, timeout=30.0)
+        response.raise_for_status()
+        data = response.json()
+        
+        collection = data.get("collection", [])
+        if not collection:
+            console.print("[red]✗ Paper not found in bioRxiv API[/red]")
+            return
+        
+        entry = collection[0]
+        paper = Paper(
+            arxiv_id=doi,
+            title=entry.get("title", "").strip(),
+            authors=entry.get("authors", ""),
+            abstract=entry.get("abstract", "").strip(),
+            published_date=datetime.fromisoformat(entry.get("date", "").split("T")[0]),
+            pdf_url=f"https://www.biorxiv.org/content/{doi}v1.full.pdf"
+        )
+        
+        db.add(paper)
+        db.commit()
+        console.print(f"[green]✓ Added paper (ID: {paper.id}): {paper.title[:60]}...[/green]")
+        
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+        db.rollback()
+    finally:
+        db.close()
+
 # ============= PROCESS COMMANDS =============
 
 @cli.command()
