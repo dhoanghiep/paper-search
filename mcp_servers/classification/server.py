@@ -34,7 +34,8 @@ def classify_paper(title: str, abstract: str, existing_categories: list[str]) ->
     """Classify paper into multiple categories using LLM"""
     
     categories = ["AI", "singlecell", "longread", "methods", "benchmark", "dataset", 
-                  "epigenetics", "transcriptomics", "genomics", "microbial", "ecology"]
+                  "epigenetics", "transcriptomics", "genomics", "microbial", "ecology",
+                  "spatial", "assembly", "alignment", "isoforms", "splicing", "cancer", "immunology"]
     
     prompt = f"""Classify this research paper into relevant categories. Select ALL applicable categories.
 
@@ -50,6 +51,13 @@ Categories:
 - genomics: genome sequencing, DNA analysis, variants
 - microbial: bacteria, microbiome, pathogens
 - ecology: ecosystems, biodiversity, species
+- spatial: spatial transcriptomics, spatial omics, tissue mapping
+- assembly: genome assembly, sequence assembly, scaffolding
+- alignment: sequence alignment, mapping, read alignment
+- isoforms: alternative splicing, transcript isoforms, variants
+- splicing: RNA splicing, splice sites, splicing regulation
+- cancer: oncology, tumors, cancer biology, cancer genomics
+- immunology: immune system, T cells, B cells, antibodies
 
 Paper:
 Title: {title}
