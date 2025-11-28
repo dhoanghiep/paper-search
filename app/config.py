@@ -40,7 +40,7 @@ class Settings:
     # Processing
     MIN_ABSTRACT_LENGTH: int = 50  # Minimum length to use abstract as summary
     PROCESS_BATCH_SIZE: int = 10   # Papers to process per job run
-    PROCESS_INTERVAL_MINUTES: int = 5  # Process every 5 minutes
+    PROCESS_INTERVAL_MINUTES: int = 1  # Process every 1 minute
     
     # Scheduler
     SCRAPE_SCHEDULE_HOUR: int = 6  # 6:00 AM

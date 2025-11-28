@@ -86,67 +86,105 @@ def scheduler():
         console.print(f"[red]✗ Error: {e}[/red]")
 
 @jobs.command()
-@click.option('--source', type=click.Choice(['arxiv', 'biorxiv', 'pubmed', 'all']), default='all', help='Source to scrape')
-@click.option('--max-results', default=10, help='Maximum papers to fetch')
-def trigger_scrape(source, max_results):
-    """Manually trigger scraping job"""
+@click.option('--source', type=click.Choice(['biorxiv', 'pubmed', 'all']), default='all', help='Source to scrape')
+def trigger_scrape(source):
+    """Manually trigger scraping (matches scheduler config exactly)"""
+    import asyncio
+    from datetime import datetime
+    from app.agents.biorxiv_scraper import BiorxivScraper
+    from app.agents.pubmed_scraper import PubmedScraper
+    from app.database import SessionLocal
+    from app.models import JobHistory
+    
+    db = SessionLocal()
     try:
-        if source == 'all':
-            sources = ['arxiv', 'biorxiv', 'pubmed']
-        else:
-            sources = [source]
-        
-        console.print(f"[cyan]Triggering scrape for: {', '.join(sources)}[/cyan]\n")
+        sources = ['biorxiv', 'pubmed'] if source == 'all' else [source]
+        console.print(f"[cyan]Scraping: {', '.join(sources)}[/cyan]\n")
         
         for src in sources:
-            response = httpx.post(
-                f"{API_BASE}/jobs/scrape",
-                params={"source": src, "max_results": max_results},
-                timeout=60.0
-            )
-            response.raise_for_status()
-            data = response.json()
+            job = JobHistory(job_type='scrape', source=src, started_at=datetime.utcnow(), status='running')
+            db.add(job)
+            db.commit()
             
-            if data.get("status") == "completed":
-                console.print(f"[green]✓ {src}: {data.get('papers_saved', 0)} papers saved[/green]")
-            else:
-                console.print(f"[yellow]⚠ {src}: {data.get('error', 'Unknown error')}[/yellow]")
+            try:
+                if src == 'biorxiv':
+                    console.print(f"[cyan]bioRxiv: {settings.BIORXIV_SCRAPE_MAX} papers, last {settings.BIORXIV_DAYS_BACK} days[/cyan]")
+                    scraper = BiorxivScraper()
+                    papers = asyncio.run(scraper.fetch_recent_papers(
+                        max_results=settings.BIORXIV_SCRAPE_MAX,
+                        days_back=settings.BIORXIV_DAYS_BACK
+                    ))
+                    saved = scraper.save_papers(db, papers)
+                    console.print(f"[green]✓ bioRxiv: fetched {len(papers)}, saved {saved}[/green]\n")
+                    
+                    job.completed_at = datetime.utcnow()
+                    job.status = 'success'
+                    job.result = {'fetched': len(papers), 'saved': saved}
+                
+                elif src == 'pubmed':
+                    console.print(f"[cyan]PubMed: query='{settings.PUBMED_SCRAPE_QUERY}', max={settings.PUBMED_SCRAPE_MAX}[/cyan]")
+                    scraper = PubmedScraper()
+                    papers = asyncio.run(scraper.fetch_recent_papers(
+                        max_results=settings.PUBMED_SCRAPE_MAX,
+                        query=settings.PUBMED_SCRAPE_QUERY
+                    ))
+                    saved = scraper.save_papers(db, papers)
+                    console.print(f"[green]✓ PubMed: fetched {len(papers)}, saved {saved}[/green]\n")
+                    
+                    job.completed_at = datetime.utcnow()
+                    job.status = 'success'
+                    job.result = {'fetched': len(papers), 'saved': saved}
+                
+                db.commit()
+            
+            except Exception as e:
+                console.print(f"[red]✗ {src}: {e}[/red]\n")
+                job.completed_at = datetime.utcnow()
+                job.status = 'failed'
+                job.error = str(e)
+                db.commit()
         
-    except httpx.ConnectError:
-        console.print("[red]✗ Error: API not running. Start with: uvicorn app.main:app[/red]")
-    except Exception as e:
-        console.print(f"[red]✗ Error: {e}[/red]")
+    finally:
+        db.close()
 
 @jobs.command()
 @click.option('--limit', default=10, help='Number of papers to process')
-@click.option('--sync', is_flag=True, help='Run synchronously (wait for completion)')
-def trigger_process(limit, sync):
+def trigger_process(limit):
     """Manually trigger paper processing job"""
+    from datetime import datetime
+    from app.pipeline import process_new_papers
+    from app.database import SessionLocal
+    from app.models import JobHistory
+    
+    db = SessionLocal()
+    job = JobHistory(job_type='process', started_at=datetime.utcnow(), status='running')
+    db.add(job)
+    db.commit()
+    
     try:
-        endpoint = "/jobs/process-sync" if sync else "/jobs/process"
+        console.print(f"[cyan]Processing {limit} papers...[/cyan]\n")
         
-        console.print(f"[cyan]Triggering processing of {limit} papers...[/cyan]")
+        result = process_new_papers(limit)
         
-        response = httpx.post(
-            f"{API_BASE}{endpoint}",
-            params={"limit": limit},
-            timeout=300.0 if sync else 10.0
-        )
-        response.raise_for_status()
-        data = response.json()
+        job.completed_at = datetime.utcnow()
+        job.status = 'success'
+        job.result = result
+        db.commit()
         
-        if sync:
-            result = data.get("result", {})
-            console.print(f"[green]✓ Processed: {result.get('processed', 0)}[/green]")
-            if result.get('errors', 0) > 0:
-                console.print(f"[yellow]⚠ Errors: {result.get('errors', 0)}[/yellow]")
-        else:
-            console.print(f"[green]✓ {data.get('message', 'Job started')}[/green]")
+        console.print(f"\n[green]✓ Processed: {result.get('processed', 0)}[/green]")
+        if result.get('errors', 0) > 0:
+            console.print(f"[yellow]⚠ Errors: {result.get('errors', 0)}[/yellow]")
+        if result.get('paper_ids'):
+            console.print(f"[dim]Paper IDs: {', '.join(map(str, result['paper_ids']))}[/dim]")
         
-    except httpx.ConnectError:
-        console.print("[red]✗ Error: API not running. Start with: uvicorn app.main:app[/red]")
     except Exception as e:
         console.print(f"[red]✗ Error: {e}[/red]")
+        job.completed_at = datetime.utcnow()
+        job.status = 'failed'
+        job.error = str(e)
+        db.commit()
+    finally:
+        db.close()
 
 @jobs.command()
 def stats():

@@ -9,40 +9,52 @@ class PubmedScraper(BaseScraper):
         self.base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
     
     async def fetch_recent_papers(self, max_results=10, query="cancer OR diabetes"):
-        """Fetch recent papers from PubMed"""
-        # Step 1: Search for paper IDs
-        search_url = f"{self.base_url}/esearch.fcgi"
-        search_params = {
-            "db": "pubmed",
-            "term": query,
-            "retmax": max_results,
-            "sort": "pub_date",
-            "retmode": "json"
-        }
-        
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            # Get IDs
+        """Fetch recent papers from PubMed with batching"""
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # Step 1: Search for paper IDs
+            search_url = f"{self.base_url}/esearch.fcgi"
+            search_params = {
+                "db": "pubmed",
+                "term": query,
+                "retmax": max_results,
+                "sort": "pub_date",
+                "retmode": "json"
+            }
+            
             search_response = await client.get(search_url, params=search_params)
             search_response.raise_for_status()
-            await asyncio.sleep(0.34)  # NCBI rate limit: 3 req/sec
+            await asyncio.sleep(0.34)
             
             ids = search_response.json()["esearchresult"]["idlist"]
             if not ids:
                 return []
             
-            # Step 2: Fetch paper details
-            fetch_url = f"{self.base_url}/efetch.fcgi"
-            fetch_params = {
-                "db": "pubmed",
-                "id": ",".join(ids),
-                "retmode": "xml"
-            }
+            # Step 2: Fetch paper details in batches
+            batch_size = 100  # Smaller batches for reliability
+            all_papers = []
             
-            fetch_response = await client.get(fetch_url, params=fetch_params)
-            fetch_response.raise_for_status()
-            await asyncio.sleep(0.34)
+            for i in range(0, len(ids), batch_size):
+                batch_ids = ids[i:i + batch_size]
+                
+                fetch_url = f"{self.base_url}/efetch.fcgi"
+                fetch_params = {
+                    "db": "pubmed",
+                    "id": ",".join(batch_ids),
+                    "retmode": "xml"
+                }
+                
+                try:
+                    fetch_response = await client.get(fetch_url, params=fetch_params, timeout=60.0)
+                    fetch_response.raise_for_status()
+                    papers = self.parse_pubmed_response(fetch_response.text)
+                    all_papers.extend(papers)
+                except Exception as e:
+                    print(f"Warning: Batch {i//batch_size + 1} failed: {e}")
+                    continue
+                
+                await asyncio.sleep(0.34)
             
-            return self.parse_pubmed_response(fetch_response.text)
+            return all_papers
     
     def parse_pubmed_response(self, xml_text):
         """Parse PubMed XML response"""
