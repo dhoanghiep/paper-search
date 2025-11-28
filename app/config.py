@@ -27,7 +27,7 @@ class Settings:
     
     # Daily Scraping Configuration
     BIORXIV_SCRAPE_MAX: int = 1000  # Fetch up to 1000 papers
-    BIORXIV_DAYS_BACK: int = 7      # From last 7 days
+    BIORXIV_DAYS_BACK: int = 30      # From last 30 days (1 month)
     PUBMED_SCRAPE_QUERY: str = "longread"  # Search query
     PUBMED_SCRAPE_MAX: int = 1000   # Fetch up to 1000 papers
     
