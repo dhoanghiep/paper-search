@@ -255,7 +255,6 @@ def list(limit, unprocessed, category, total):
     """List papers"""
     from app.database import SessionLocal
     from app.models import Paper, Category
-    from sqlalchemy import or_
     
     db = SessionLocal()
     try:
@@ -268,9 +267,14 @@ def list(limit, unprocessed, category, total):
         if unprocessed:
             query = query.filter((Paper.summary == None) | (Paper.summary == ""))
         if category:
-            query = query.join(Paper.categories).filter(
-                or_(*[Category.name.ilike(f"%{cat}%") for cat in category])
-            ).distinct()
+            # AND logic: paper must have ALL specified categories
+            from sqlalchemy.orm import aliased
+            for cat in category:
+                cat_alias = aliased(Category)
+                query = query.join(cat_alias, Paper.categories).filter(
+                    cat_alias.name.ilike(f"%{cat}%")
+                )
+            query = query.distinct()
         
         # Get filtered count
         filtered_count = query.count()
