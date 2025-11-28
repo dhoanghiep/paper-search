@@ -107,29 +107,37 @@ def process(limit):
 @cli.command()
 @click.option('--limit', default=20, help='Number of papers to show')
 @click.option('--unprocessed', is_flag=True, help='Show only unprocessed papers')
-def list(limit, unprocessed):
+@click.option('--category', help='Filter by category name')
+def list(limit, unprocessed, category):
     """List papers"""
     from app.database import SessionLocal
-    from app.models import Paper
+    from app.models import Paper, Category
     
     db = SessionLocal()
     try:
         query = db.query(Paper)
         if unprocessed:
             query = query.filter((Paper.summary == None) | (Paper.summary == ""))
+        if category:
+            query = query.join(Paper.categories).filter(Category.name.ilike(f"%{category}%"))
         papers = query.order_by(Paper.created_at.desc()).limit(limit).all()
         
-        table = Table(title=f"Papers ({len(papers)} shown)")
+        title = f"Papers ({len(papers)} shown)"
+        if category:
+            title += f" - Category: {category}"
+        table = Table(title=title)
         table.add_column("ID", style="cyan")
         table.add_column("Title", style="white", max_width=50)
         table.add_column("Source", style="yellow")
+        table.add_column("Categories", style="magenta", max_width=30)
         table.add_column("Processed", style="green")
         
         for paper in papers:
             source = "arXiv" if "arxiv" in paper.arxiv_id.lower() else \
                      "PubMed" if "PMID" in paper.arxiv_id else "bioRxiv"
             processed = "✓" if paper.summary else "✗"
-            table.add_row(str(paper.id), paper.title[:50], source, processed)
+            cats = ", ".join([c.name for c in paper.categories]) if paper.categories else "-"
+            table.add_row(str(paper.id), paper.title[:50], source, cats[:30], processed)
         
         console.print(table)
     finally:
@@ -154,6 +162,35 @@ def search(query):
             console.print(f"[bold]{paper.id}. {paper.title}[/bold]")
             console.print(f"   {paper.arxiv_id} | {paper.published_date}")
             console.print()
+    finally:
+        db.close()
+
+@cli.command()
+def categories():
+    """List all categories with paper counts"""
+    from app.database import SessionLocal
+    from app.models import Category
+    from sqlalchemy import func
+    
+    db = SessionLocal()
+    try:
+        cats = db.query(Category).all()
+        
+        if not cats:
+            console.print("[yellow]No categories found. Process papers first to generate categories.[/yellow]")
+            return
+        
+        table = Table(title=f"Categories ({len(cats)} total)")
+        table.add_column("Name", style="cyan")
+        table.add_column("Papers", style="green", justify="right")
+        table.add_column("Description", style="white", max_width=60)
+        
+        for cat in cats:
+            paper_count = len(cat.papers)
+            desc = cat.description[:60] if cat.description else "-"
+            table.add_row(cat.name, str(paper_count), desc)
+        
+        console.print(table)
     finally:
         db.close()
 
