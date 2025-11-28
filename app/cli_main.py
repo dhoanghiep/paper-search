@@ -149,6 +149,66 @@ def add(url):
 # ============= PROCESS COMMANDS =============
 
 @cli.command()
+@click.argument('doi')
+def add(doi):
+    """Add a paper by DOI (bioRxiv format: 10.1101/...)"""
+    import re
+    import httpx
+    from datetime import datetime
+    from app.database import SessionLocal
+    from app.models import Paper
+    
+    db = SessionLocal()
+    try:
+        # Clean DOI
+        doi_match = re.search(r'10\.\d+/[\d.]+', doi)
+        if not doi_match:
+            console.print("[red]✗ Invalid DOI format. Expected: 10.1101/YYYY.MM.DD.XXXXXX[/red]")
+            return
+        
+        doi = doi_match.group(0)
+        
+        # Check if exists
+        existing = db.query(Paper).filter(Paper.arxiv_id == doi).first()
+        if existing:
+            console.print(f"[yellow]⚠ Paper already exists (ID: {existing.id})[/yellow]")
+            return
+        
+        console.print(f"[cyan]Fetching DOI: {doi}...[/cyan]")
+        
+        # Try bioRxiv API
+        api_url = f"https://api.biorxiv.org/details/biorxiv/{doi}"
+        response = httpx.get(api_url, timeout=30.0)
+        response.raise_for_status()
+        data = response.json()
+        
+        collection = data.get("collection", [])
+        if not collection:
+            console.print("[red]✗ Paper not found in bioRxiv API[/red]")
+            return
+        
+        entry = collection[0]
+        paper = Paper(
+            arxiv_id=doi,
+            title=entry.get("title", "").strip(),
+            authors=entry.get("authors", ""),
+            abstract=entry.get("abstract", "").strip(),
+            published_date=datetime.fromisoformat(entry.get("date", "").split("T")[0]),
+            pdf_url=f"https://www.biorxiv.org/content/{doi}v1.full.pdf"
+        )
+        
+        db.add(paper)
+        db.commit()
+        console.print(f"[green]✓ Added paper (ID: {paper.id})[/green]")
+        console.print(f"[white]{paper.title}[/white]")
+        
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+        db.rollback()
+    finally:
+        db.close()
+
+@cli.command()
 @click.option('--limit', default=10, help='Number of papers to process')
 def process(limit):
     """Process unprocessed papers (classify + summarize)"""
