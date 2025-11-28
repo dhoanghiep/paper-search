@@ -2,10 +2,9 @@ import httpx
 import asyncio
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from sqlalchemy.orm import Session
-from app.models import Paper
+from app.agents.base_scraper import BaseScraper
 
-class PubmedScraper:
+class PubmedScraper(BaseScraper):
     def __init__(self):
         self.base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
     
@@ -93,27 +92,3 @@ class PubmedScraper:
                 continue
         
         return papers
-    
-    def save_papers(self, db: Session, papers_data):
-        """Save papers to database"""
-        from sqlalchemy.exc import IntegrityError
-        saved_count = 0
-        for paper_data in papers_data:
-            try:
-                existing = db.query(Paper).filter(Paper.arxiv_id == paper_data["id"]).first()
-                if not existing:
-                    paper = Paper(
-                        arxiv_id=paper_data["id"],
-                        title=paper_data["title"],
-                        authors=paper_data["authors"],
-                        abstract=paper_data["abstract"],
-                        published_date=paper_data["published"],
-                        pdf_url=paper_data["pdf_url"]
-                    )
-                    db.add(paper)
-                    db.commit()
-                    saved_count += 1
-            except IntegrityError:
-                db.rollback()
-                continue
-        return saved_count

@@ -2,10 +2,9 @@ import httpx
 import asyncio
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from sqlalchemy.orm import Session
-from app.models import Paper
+from app.agents.base_scraper import BaseScraper
 
-class ArxivScraper:
+class ArxivScraper(BaseScraper):
     def __init__(self, base_url="https://export.arxiv.org/api/query"):
         self.base_url = base_url
     
@@ -41,27 +40,3 @@ class ArxivScraper:
             pdf_url = next((link.get('href') for link in entry.findall('atom:link', ns) if link.get('title') == 'pdf'), None)
             papers.append({"id": arxiv_id, "title": title, "authors": authors, "abstract": abstract, "published": published, "pdf_url": pdf_url})
         return papers
-    
-    def save_papers(self, db: Session, papers_data):
-        """Save papers to database"""
-        from sqlalchemy.exc import IntegrityError
-        saved_count = 0
-        for paper_data in papers_data:
-            try:
-                existing = db.query(Paper).filter(Paper.arxiv_id == paper_data["id"]).first()
-                if not existing:
-                    paper = Paper(
-                        arxiv_id=paper_data["id"],
-                        title=paper_data["title"],
-                        authors=paper_data["authors"],
-                        abstract=paper_data["abstract"],
-                        published_date=paper_data["published"],
-                        pdf_url=paper_data["pdf_url"]
-                    )
-                    db.add(paper)
-                    db.commit()
-                    saved_count += 1
-            except IntegrityError:
-                db.rollback()
-                continue
-        return saved_count

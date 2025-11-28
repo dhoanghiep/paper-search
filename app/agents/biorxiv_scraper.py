@@ -1,10 +1,9 @@
 import httpx
 import asyncio
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
-from app.models import Paper
+from app.agents.base_scraper import BaseScraper
 
-class BiorxivScraper:
+class BiorxivScraper(BaseScraper):
     def __init__(self):
         self.base_url = "https://api.biorxiv.org/details/biorxiv"
     
@@ -53,28 +52,3 @@ class BiorxivScraper:
                 break
         
         return papers
-    
-    def save_papers(self, db: Session, papers_data):
-        """Save papers to database"""
-        from sqlalchemy.exc import IntegrityError
-        saved_count = 0
-        for paper_data in papers_data:
-            try:
-                # Use DOI as unique identifier for bioRxiv
-                existing = db.query(Paper).filter(Paper.arxiv_id == paper_data["id"]).first()
-                if not existing:
-                    paper = Paper(
-                        arxiv_id=paper_data["id"],  # Store DOI in arxiv_id field
-                        title=paper_data["title"],
-                        authors=paper_data["authors"],
-                        abstract=paper_data["abstract"],
-                        published_date=paper_data["published"],
-                        pdf_url=paper_data["pdf_url"]
-                    )
-                    db.add(paper)
-                    db.commit()
-                    saved_count += 1
-            except IntegrityError:
-                db.rollback()
-                continue
-        return saved_count
