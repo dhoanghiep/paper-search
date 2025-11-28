@@ -217,6 +217,73 @@ def pubmed_fetch(pmids):
     finally:
         db.close()
 
+@cli.command()
+@click.option('--date', default=None, help='Date in YYYY/MM/DD format (default: today)')
+@click.option('--topic', default=None, help='Filter by topic (e.g., cancer, genomics)')
+@click.option('--max-results', default=100, help='Maximum results')
+def pubmed_daily(date, topic, max_results):
+    """Get all PubMed articles from a specific day"""
+    from datetime import datetime
+    
+    # Use today if no date specified
+    if not date:
+        date = datetime.now().strftime("%Y/%m/%d")
+    
+    # Build query
+    if topic:
+        query = f"{topic} AND {date}[PDAT]"
+    else:
+        query = f"{date}[PDAT]"
+    
+    console.print(f"[cyan]Searching PubMed for articles on {date}[/cyan]")
+    if topic:
+        console.print(f"[cyan]Topic filter: {topic}[/cyan]")
+    console.print()
+    
+    import httpx
+    
+    try:
+        base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+        search_url = f"{base_url}/esearch.fcgi"
+        params = {
+            "db": "pubmed",
+            "term": query,
+            "retmax": max_results,
+            "sort": "pub_date",
+            "retmode": "json"
+        }
+        
+        response = httpx.get(search_url, params=params, timeout=30.0)
+        response.raise_for_status()
+        data = response.json()
+        
+        ids = data["esearchresult"]["idlist"]
+        count = data["esearchresult"]["count"]
+        
+        console.print(f"[green]Found {count} papers total[/green]")
+        console.print(f"[green]Showing {len(ids)} PMIDs[/green]\n")
+        
+        if len(ids) > 0:
+            # Show first 20 in table
+            table = Table(title=f"PubMed Articles - {date}")
+            table.add_column("PMID", style="cyan")
+            
+            for pmid in ids[:20]:
+                table.add_row(pmid)
+            
+            console.print(table)
+            
+            if len(ids) > 20:
+                console.print(f"\n[yellow]... and {len(ids) - 20} more[/yellow]")
+            
+            console.print(f"\n[yellow]To fetch all {len(ids)}: ./paper pubmed-fetch {','.join(ids)}[/yellow]")
+            console.print(f"[yellow]To fetch first 10: ./paper pubmed-fetch {','.join(ids[:10])}[/yellow]")
+        else:
+            console.print("[yellow]No papers found for this date[/yellow]")
+        
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+
 @scrape.command()
 @click.option('--max-results', default=10, help='Maximum papers per source')
 def all(max_results):
