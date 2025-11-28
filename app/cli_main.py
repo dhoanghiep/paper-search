@@ -805,6 +805,116 @@ def weekly(save):
     else:
         console.print(report_content)
 
+@report.command()
+@click.option('--start-date', required=True, help='Start date (YYYY-MM-DD)')
+@click.option('--end-date', required=True, help='End date (YYYY-MM-DD)')
+@click.option('--category', multiple=True, help='Filter by categories (can specify multiple)')
+@click.option('--save', help='Save to file')
+def generate(start_date, end_date, category, save):
+    """Generate LLM-based report for papers in date range and categories"""
+    from app.database import SessionLocal
+    from app.models import Paper, Category
+    from datetime import datetime
+    from sqlalchemy.orm import aliased
+    import os
+    
+    console.print(f"[cyan]Generating report for {start_date} to {end_date}[/cyan]")
+    if category:
+        console.print(f"[cyan]Categories: {', '.join(category)}[/cyan]")
+    
+    db = SessionLocal()
+    try:
+        # Parse dates
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+        
+        # Query papers
+        query = db.query(Paper).filter(
+            Paper.published_date >= start,
+            Paper.published_date <= end,
+            Paper.summary != None,
+            Paper.summary != ""
+        )
+        
+        # Apply category filters (AND logic)
+        if category:
+            for cat in category:
+                cat_alias = aliased(Category)
+                query = query.join(cat_alias, Paper.categories).filter(
+                    cat_alias.name.ilike(f"%{cat}%")
+                )
+            query = query.distinct()
+        
+        papers = query.all()
+        
+        if not papers:
+            console.print("[yellow]No papers found matching criteria[/yellow]")
+            return
+        
+        console.print(f"[green]Found {len(papers)} papers[/green]")
+        console.print("[cyan]Generating report with LLM...[/cyan]\n")
+        
+        # Prepare summaries for LLM
+        summaries_text = ""
+        for i, paper in enumerate(papers, 1):
+            cats = ", ".join([c.name for c in paper.categories]) if paper.categories else "Uncategorized"
+            summaries_text += f"\n{i}. {paper.title}\n"
+            summaries_text += f"   Categories: {cats}\n"
+            summaries_text += f"   Published: {paper.published_date.strftime('%Y-%m-%d')}\n"
+            summaries_text += f"   Summary: {paper.summary[:500]}...\n"
+        
+        # Call LLM
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+            model = genai.GenerativeModel('gemini-2.0-flash')
+            
+            prompt = f"""Generate a comprehensive research report based on these papers published between {start_date} and {end_date}.
+
+Categories: {', '.join(category) if category else 'All'}
+Number of papers: {len(papers)}
+
+Papers and their summaries:
+{summaries_text}
+
+Please provide:
+1. Executive Summary (2-3 paragraphs)
+2. Key Themes and Trends
+3. Notable Findings by Category
+4. Emerging Research Directions
+5. Conclusion
+
+Format the report in markdown."""
+
+            response = model.generate_content(prompt)
+            report_content = response.text
+            
+            # Add header
+            header = f"""# Research Report
+**Period:** {start_date} to {end_date}
+**Categories:** {', '.join(category) if category else 'All'}
+**Papers Analyzed:** {len(papers)}
+**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+---
+
+"""
+            full_report = header + report_content
+            
+            if save:
+                with open(save, 'w') as f:
+                    f.write(full_report)
+                console.print(f"[green]✓ Report saved to {save}[/green]")
+            else:
+                console.print(full_report)
+                
+        except Exception as e:
+            console.print(f"[red]✗ Error generating report with LLM: {e}[/red]")
+            console.print("[yellow]Make sure GOOGLE_API_KEY is set in .env[/yellow]")
+            
+    finally:
+        db.close()
+
 # ============= JOBS COMMANDS =============
 
 @cli.group()
