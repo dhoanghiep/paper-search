@@ -79,6 +79,144 @@ def pubmed(max_results, query):
     finally:
         db.close()
 
+@cli.command()
+@click.argument('query')
+@click.option('--max-results', default=20, help='Maximum results to show')
+def pubmed_search(query, max_results):
+    """Search PubMed and display results (without saving)"""
+    import httpx
+    
+    console.print(f"[cyan]Searching PubMed for: {query}[/cyan]\n")
+    
+    try:
+        base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+        search_url = f"{base_url}/esearch.fcgi"
+        params = {
+            "db": "pubmed",
+            "term": query,
+            "retmax": max_results,
+            "sort": "pub_date",
+            "retmode": "json"
+        }
+        
+        response = httpx.get(search_url, params=params, timeout=30.0)
+        response.raise_for_status()
+        data = response.json()
+        
+        ids = data["esearchresult"]["idlist"]
+        count = data["esearchresult"]["count"]
+        
+        console.print(f"[green]Found {count} papers, showing {len(ids)}:[/green]\n")
+        
+        table = Table(title="PubMed Search Results")
+        table.add_column("PMID", style="cyan")
+        
+        for pmid in ids:
+            table.add_row(pmid)
+        
+        console.print(table)
+        console.print(f"\n[yellow]To fetch and save: ./paper pubmed-fetch {','.join(ids[:5])}[/yellow]")
+        
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+
+@cli.command()
+@click.argument('pmids')
+def pubmed_fetch(pmids):
+    """Fetch and save specific PubMed papers by PMID (comma-separated)"""
+    import httpx
+    import xml.etree.ElementTree as ET
+    from datetime import datetime
+    from app.database import SessionLocal
+    from app.models import Paper
+    
+    db = SessionLocal()
+    pmid_list = [p.strip() for p in pmids.split(',')]
+    
+    console.print(f"[cyan]Fetching {len(pmid_list)} papers from PubMed...[/cyan]\n")
+    
+    try:
+        base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
+        fetch_url = f"{base_url}/efetch.fcgi"
+        params = {
+            "db": "pubmed",
+            "id": ",".join(pmid_list),
+            "retmode": "xml"
+        }
+        
+        response = httpx.get(fetch_url, params=params, timeout=30.0)
+        response.raise_for_status()
+        
+        root = ET.fromstring(response.text)
+        saved = 0
+        skipped = 0
+        
+        for article in root.findall(".//PubmedArticle"):
+            try:
+                pmid = article.find(".//PMID").text
+                paper_id = f"PMID:{pmid}"
+                
+                # Check if exists
+                existing = db.query(Paper).filter(Paper.arxiv_id == paper_id).first()
+                if existing:
+                    console.print(f"[yellow]⚠ PMID:{pmid} already exists[/yellow]")
+                    skipped += 1
+                    continue
+                
+                title_elem = article.find(".//ArticleTitle")
+                title = title_elem.text if title_elem is not None else "No title"
+                
+                abstract_elem = article.find(".//AbstractText")
+                abstract = abstract_elem.text if abstract_elem is not None else ""
+                
+                # Authors
+                authors = []
+                for author in article.findall(".//Author"):
+                    lastname = author.find("LastName")
+                    forename = author.find("ForeName")
+                    if lastname is not None and forename is not None:
+                        authors.append(f"{forename.text} {lastname.text}")
+                
+                # Date
+                pub_date = article.find(".//PubDate")
+                year = pub_date.find("Year").text if pub_date.find("Year") is not None else "2024"
+                month = pub_date.find("Month").text if pub_date.find("Month") is not None else "01"
+                day = pub_date.find("Day").text if pub_date.find("Day") is not None else "01"
+                
+                month_map = {"Jan": "01", "Feb": "02", "Mar": "03", "Apr": "04", "May": "05", "Jun": "06",
+                            "Jul": "07", "Aug": "08", "Sep": "09", "Oct": "10", "Nov": "11", "Dec": "12"}
+                month = month_map.get(month, month if month.isdigit() else "01")
+                
+                published = datetime.strptime(f"{year}-{month}-{day}", "%Y-%m-%d")
+                
+                paper = Paper(
+                    arxiv_id=paper_id,
+                    title=title,
+                    authors=", ".join(authors) if authors else "Unknown",
+                    abstract=abstract,
+                    published_date=published,
+                    pdf_url=f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
+                )
+                
+                db.add(paper)
+                db.commit()
+                console.print(f"[green]✓ Added PMID:{pmid}: {title[:60]}...[/green]")
+                saved += 1
+                
+            except Exception as e:
+                console.print(f"[red]✗ Error processing article: {e}[/red]")
+                db.rollback()
+                continue
+        
+        console.print(f"\n[green]✓ Saved: {saved}[/green]")
+        if skipped > 0:
+            console.print(f"[yellow]⚠ Skipped: {skipped}[/yellow]")
+            
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+    finally:
+        db.close()
+
 @scrape.command()
 @click.option('--max-results', default=10, help='Maximum papers per source')
 def all(max_results):
