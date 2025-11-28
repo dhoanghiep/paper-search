@@ -88,8 +88,11 @@ def scheduler():
 
 @jobs.command()
 @click.option('--source', type=click.Choice(['biorxiv', 'pubmed', 'all']), default='all', help='Source to scrape')
-def trigger_scrape(source):
-    """Manually trigger scraping (matches scheduler config exactly)"""
+@click.option('--max-results', type=int, help='Maximum papers to fetch (default: use config)')
+@click.option('--days-back', type=int, help='Days to look back for bioRxiv (default: use config)')
+@click.option('--query', type=str, help='Search query for PubMed (default: use config)')
+def trigger_scrape(source, max_results, days_back, query):
+    """Manually trigger scraping with custom options"""
     import asyncio
     from datetime import datetime
     from app.agents.biorxiv_scraper import BiorxivScraper
@@ -109,11 +112,14 @@ def trigger_scrape(source):
             
             try:
                 if src == 'biorxiv':
-                    console.print(f"[cyan]bioRxiv: {settings.BIORXIV_SCRAPE_MAX} papers, last {settings.BIORXIV_DAYS_BACK} days[/cyan]")
+                    max_res = max_results or settings.BIORXIV_SCRAPE_MAX
+                    days = days_back or settings.BIORXIV_DAYS_BACK
+                    
+                    console.print(f"[cyan]bioRxiv: {max_res} papers, last {days} days[/cyan]")
                     scraper = BiorxivScraper()
                     papers = asyncio.run(scraper.fetch_recent_papers(
-                        max_results=settings.BIORXIV_SCRAPE_MAX,
-                        days_back=settings.BIORXIV_DAYS_BACK
+                        max_results=max_res,
+                        days_back=days
                     ))
                     saved = scraper.save_papers(db, papers)
                     console.print(f"[green]✓ bioRxiv: fetched {len(papers)}, saved {saved}[/green]\n")
@@ -123,11 +129,14 @@ def trigger_scrape(source):
                     job.result = {'fetched': len(papers), 'saved': saved}
                 
                 elif src == 'pubmed':
-                    console.print(f"[cyan]PubMed: query='{settings.PUBMED_SCRAPE_QUERY}', max={settings.PUBMED_SCRAPE_MAX}[/cyan]")
+                    max_res = max_results or settings.PUBMED_SCRAPE_MAX
+                    search_query = query or settings.PUBMED_SCRAPE_QUERY
+                    
+                    console.print(f"[cyan]PubMed: query='{search_query}', max={max_res}[/cyan]")
                     scraper = PubmedScraper()
                     papers = asyncio.run(scraper.fetch_recent_papers(
-                        max_results=settings.PUBMED_SCRAPE_MAX,
-                        query=settings.PUBMED_SCRAPE_QUERY
+                        max_results=max_res,
+                        query=search_query
                     ))
                     saved = scraper.save_papers(db, papers)
                     console.print(f"[green]✓ PubMed: fetched {len(papers)}, saved {saved}[/green]\n")
