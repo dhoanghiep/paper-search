@@ -25,7 +25,7 @@ export async function PapersList() {
                             <tr>
                                 <td><a href="#paper/${p.id}">${p.title}</a></td>
                                 <td>${Array.isArray(p.authors) ? p.authors.slice(0, 2).join(', ') : (p.authors ? p.authors.split(',').slice(0, 2).join(', ') : 'N/A')}</td>
-                                <td>${p.category || 'Uncategorized'}</td>
+                                <td>${p.categories && p.categories.length > 0 ? p.categories.map(c => c.name).join(', ') : 'Uncategorized'}</td>
                                 <td>${new Date(p.published_date).toLocaleDateString()}</td>
                                 <td><button class="btn btn-primary" onclick="window.viewPaper('${p.id}')">View</button></td>
                             </tr>
