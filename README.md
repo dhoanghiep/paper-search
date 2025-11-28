@@ -55,28 +55,28 @@ cp .env.example .env
 ```bash
 # Scrape papers
 ./paper scrape biorxiv --max-results 50
-./paper add "10.1101/2024.11.28.625751"  # Add specific paper
+./paper papers add "10.1101/2024.11.28.625751"  # Add specific paper
 
 # PubMed operations
-./paper pubmed-daily --topic "bioinformatics"
-./paper pubmed-search "CRISPR gene editing" --max-results 20
-./paper pubmed-fetch "41280279,41208948"
+./paper pubmed daily --topic "bioinformatics"
+./paper pubmed search "CRISPR gene editing" --max-results 20
+./paper pubmed fetch "41280279,41208948"
 
 # Process papers (classify + summarize)
-./paper process --limit 10
-./paper process --ids "1,2,3"  # Process specific papers
+./paper papers process --limit 10
+./paper papers process --ids "1,2,3"  # Process specific papers
 
 # View papers
-./paper list --limit 20 --total
-./paper list --category genomics --category transcriptomics
-./paper show 1
-./paper categories
+./paper papers list --limit 20 --total
+./paper papers list --category genomics --category transcriptomics
+./paper papers show 1
+./paper categories list
 
 # Generate reports
 ./paper report generate --start-date 2025-11-20 --end-date 2025-11-28 --category genomics --save report.md
 
 # Statistics
-./paper stats
+./paper categories stats
 ```
 
 ## 📁 Architecture
@@ -109,35 +109,35 @@ paper-search/
 ```bash
 ./paper scrape biorxiv --max-results 50
 ./paper scrape arxiv --max-results 10
-./paper scrape pubmed --query "cancer" --max-results 20
+./paper scrape pubmed --max-results 20 --query "cancer"
 ./paper scrape all --max-results 10
-./paper add <doi-or-url>                    # Add specific paper
 ```
 
 ### PubMed Operations
 ```bash
-./paper pubmed-search "query" --max-results 20    # Search only
-./paper pubmed-fetch "PMID1,PMID2,PMID3"          # Fetch specific
-./paper pubmed-daily --topic "topic"              # Today's papers
-./paper pubmed-daily --date 2024/11/28 --topic "CRISPR"
+./paper pubmed search "query" --max-results 20    # Search only
+./paper pubmed fetch "PMID1,PMID2,PMID3"          # Fetch specific
+./paper pubmed daily --topic "topic"              # Today's papers
+./paper pubmed daily --date 2024/11/28 --topic "CRISPR"
 ```
 
-### Processing
+### Paper Management
 ```bash
-./paper process --limit 10              # Process next 10 unprocessed
-./paper process --ids "1,2,3"           # Process specific papers
+./paper papers add <doi-or-url>                   # Add specific paper
+./paper papers list --limit 20 --total
+./paper papers list --category genomics
+./paper papers list --category genomics --category AI  # AND logic
+./paper papers list --unprocessed
+./paper papers show <paper-id>
+./paper papers search "keyword"
+./paper papers process --limit 10                 # Process next 10 unprocessed
+./paper papers process --ids "1,2,3"              # Process specific papers
 ```
 
-### Viewing & Filtering
+### Categories & Statistics
 ```bash
-./paper list --limit 20 --total
-./paper list --category genomics
-./paper list --category genomics --category AI  # AND logic
-./paper list --unprocessed
-./paper show <paper-id>
-./paper search "keyword"
-./paper categories
-./paper stats
+./paper categories list
+./paper categories stats
 ```
 
 ### Reports
@@ -148,6 +148,17 @@ paper-search/
   --category genomics \
   --category transcriptomics \
   --save report.md
+
+./paper report daily --save daily.md
+./paper report weekly --save weekly.md
+```
+
+### Exploration Tools
+```bash
+./paper explore tldr <paper-id>       # One-sentence summary
+./paper explore points <paper-id>     # Key points
+./paper explore detailed <paper-id>   # Detailed analysis
+./paper explore all <paper-id>        # All analysis
 ```
 
 ## 🤖 AI Classification Categories
@@ -271,8 +282,8 @@ uvicorn app.main:app --reload
 tail -f backend.log
 
 # Database operations
-./paper stats
-./paper list --total
+./paper categories stats
+./paper papers list --total
 ```
 
 ## 📊 Example Workflows
@@ -280,14 +291,14 @@ tail -f backend.log
 ### Daily Research Monitoring
 ```bash
 # Morning: Get today's papers
-./paper pubmed-daily --topic "bioinformatics"
+./paper pubmed daily --topic "bioinformatics"
 ./paper scrape biorxiv --max-results 50
 
 # Process new papers
-./paper process --limit 50
+./paper papers process --limit 50
 
 # Review by category
-./paper list --category genomics --category AI --total
+./paper papers list --category genomics --category AI --total
 ```
 
 ### Weekly Report Generation
@@ -304,14 +315,14 @@ tail -f backend.log
 ### Targeted Research
 ```bash
 # Search PubMed
-./paper pubmed-search "CRISPR base editing" --max-results 50
+./paper pubmed search "CRISPR base editing" --max-results 50
 
 # Fetch specific papers
-./paper pubmed-fetch "41280279,41208948,41141487"
+./paper pubmed fetch "41280279,41208948,41141487"
 
 # Process and review
-./paper process --ids "62,63,64"
-./paper show 62
+./paper papers process --ids "62,63,64"
+./paper papers show 62
 ```
 
 ## 🔐 Security Notes

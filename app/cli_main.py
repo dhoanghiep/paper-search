@@ -21,6 +21,21 @@ def scrape():
     """Scrape papers from various sources"""
     pass
 
+@cli.group()
+def pubmed():
+    """PubMed operations (search, fetch, daily tracking)"""
+    pass
+
+@cli.group()
+def papers():
+    """Manage papers (add, list, show, search, process)"""
+    pass
+
+@cli.group()
+def categories():
+    """View categories and statistics"""
+    pass
+
 @scrape.command()
 @click.option('--max-results', default=10, help='Maximum papers to fetch')
 def arxiv(max_results):
@@ -59,10 +74,10 @@ def biorxiv(max_results):
     finally:
         db.close()
 
-@scrape.command()
+@scrape.command(name='pubmed')
 @click.option('--max-results', default=10, help='Maximum papers to fetch')
 @click.option('--query', default='cancer OR diabetes', help='Search query')
-def pubmed(max_results, query):
+def scrape_pubmed(max_results, query):
     """Scrape papers from PubMed"""
     from app.agents.pubmed_scraper import PubmedScraper
     from app.database import SessionLocal
@@ -79,10 +94,10 @@ def pubmed(max_results, query):
     finally:
         db.close()
 
-@cli.command()
+@pubmed.command()
 @click.argument('query')
 @click.option('--max-results', default=20, help='Maximum results to show')
-def pubmed_search(query, max_results):
+def search(query, max_results):
     """Search PubMed and display results (without saving)"""
     import httpx
     
@@ -115,14 +130,14 @@ def pubmed_search(query, max_results):
             table.add_row(pmid)
         
         console.print(table)
-        console.print(f"\n[yellow]To fetch and save: ./paper pubmed-fetch {','.join(ids[:5])}[/yellow]")
+        console.print(f"\n[yellow]To fetch and save: ./paper pubmed fetch {','.join(ids[:5])}[/yellow]")
         
     except Exception as e:
         console.print(f"[red]✗ Error: {e}[/red]")
 
-@cli.command()
+@pubmed.command()
 @click.argument('pmids')
-def pubmed_fetch(pmids):
+def fetch(pmids):
     """Fetch and save specific PubMed papers by PMID (comma-separated)"""
     import httpx
     import xml.etree.ElementTree as ET
@@ -217,11 +232,11 @@ def pubmed_fetch(pmids):
     finally:
         db.close()
 
-@cli.command()
+@pubmed.command()
 @click.option('--date', default=None, help='Date in YYYY/MM/DD format (default: today)')
 @click.option('--topic', default=None, help='Filter by topic (e.g., cancer, genomics)')
 @click.option('--max-results', default=100, help='Maximum results')
-def pubmed_daily(date, topic, max_results):
+def daily(date, topic, max_results):
     """Get all PubMed articles from a specific day"""
     from datetime import datetime
     
@@ -276,8 +291,8 @@ def pubmed_daily(date, topic, max_results):
             if len(ids) > 20:
                 console.print(f"\n[yellow]... and {len(ids) - 20} more[/yellow]")
             
-            console.print(f"\n[yellow]To fetch all {len(ids)}: ./paper pubmed-fetch {','.join(ids)}[/yellow]")
-            console.print(f"[yellow]To fetch first 10: ./paper pubmed-fetch {','.join(ids[:10])}[/yellow]")
+            console.print(f"\n[yellow]To fetch all {len(ids)}: ./paper pubmed fetch {','.join(ids)}[/yellow]")
+            console.print(f"[yellow]To fetch first 10: ./paper pubmed fetch {','.join(ids[:10])}[/yellow]")
         else:
             console.print("[yellow]No papers found for this date[/yellow]")
         
@@ -293,74 +308,9 @@ def all(max_results):
         ctx = click.get_current_context()
         ctx.invoke(globals()[source], max_results=max_results)
 
-@scrape.command()
-@click.argument('url')
-def add(url):
-    """Add a specific bioRxiv paper by URL or DOI"""
-    import re
-    import httpx
-    from datetime import datetime
-    from app.database import SessionLocal
-    from app.models import Paper
-    
-    db = SessionLocal()
-    try:
-        # Extract DOI from URL (format: 10.1101/2024.11.20.624567)
-        doi_match = re.search(r'10\.\d+/[\d.]+', url)
-        if not doi_match:
-            console.print("[red]✗ Invalid bioRxiv URL or DOI[/red]")
-            return
-        
-        doi = doi_match.group(0)
-        console.print(f"[cyan]Fetching paper with DOI: {doi}...[/cyan]")
-        
-        # Check if already exists
-        existing = db.query(Paper).filter(Paper.arxiv_id == doi).first()
-        if existing:
-            console.print(f"[yellow]⚠ Paper already exists (ID: {existing.id})[/yellow]")
-            return
-        
-        # Fetch from bioRxiv API
-        api_url = f"https://api.biorxiv.org/details/biorxiv/{doi}"
-        response = httpx.get(api_url, timeout=30.0)
-        response.raise_for_status()
-        data = response.json()
-        
-        collection = data.get("collection", [])
-        if not collection:
-            console.print("[red]✗ Paper not found in bioRxiv API[/red]")
-            return
-        
-        entry = collection[0]
-        title = entry.get("title", "").strip()
-        
-        # Skip withdrawn papers
-        if title.upper().startswith("WITHDRAWN:"):
-            console.print("[yellow]⚠ Paper is withdrawn, skipping[/yellow]")
-            return
-        
-        paper = Paper(
-            arxiv_id=doi,
-            title=title,
-            authors=entry.get("authors", ""),
-            abstract=entry.get("abstract", "").strip(),
-            published_date=datetime.fromisoformat(entry.get("date", "").split("T")[0]),
-            pdf_url=f"https://www.biorxiv.org/content/{doi}v1.full.pdf"
-        )
-        
-        db.add(paper)
-        db.commit()
-        console.print(f"[green]✓ Added paper (ID: {paper.id}): {paper.title[:60]}...[/green]")
-        
-    except Exception as e:
-        console.print(f"[red]✗ Error: {e}[/red]")
-        db.rollback()
-    finally:
-        db.close()
+# ============= PAPERS COMMANDS =============
 
-# ============= PROCESS COMMANDS =============
-
-@cli.command()
+@papers.command()
 @click.argument('doi')
 def add(doi):
     """Add a paper by DOI (bioRxiv format: 10.1101/...)"""
@@ -427,7 +377,7 @@ def add(doi):
     finally:
         db.close()
 
-@cli.command()
+@papers.command()
 @click.option('--limit', default=10, help='Number of papers to process')
 @click.option('--ids', help='Comma-separated paper IDs to process (e.g., 1,2,3)')
 def process(limit, ids):
@@ -465,7 +415,7 @@ def process(limit, ids):
 
 # ============= LIST COMMANDS =============
 
-@cli.command()
+@papers.command()
 @click.option('--limit', default=20, help='Number of papers to show')
 @click.option('--unprocessed', is_flag=True, help='Show only unprocessed papers')
 @click.option('--category', multiple=True, help='Filter by category name (can specify multiple)')
@@ -527,7 +477,7 @@ def list(limit, unprocessed, category, total):
     finally:
         db.close()
 
-@cli.command()
+@papers.command()
 @click.argument('query')
 def search(query):
     """Search papers by keyword"""
@@ -549,8 +499,8 @@ def search(query):
     finally:
         db.close()
 
-@cli.command()
-def categories():
+@categories.command()
+def list():
     """List all categories with paper counts"""
     from app.database import SessionLocal
     from app.models import Category
@@ -580,7 +530,7 @@ def categories():
 
 # ============= VIEW COMMANDS =============
 
-@cli.command()
+@papers.command()
 @click.argument('paper_id', type=int)
 @click.option('--full', is_flag=True, help='Show full abstract')
 def show(paper_id, full):
@@ -738,7 +688,7 @@ def all(paper_id):
     finally:
         db.close()
 
-@cli.command()
+@categories.command()
 def stats():
     """Show database statistics"""
     from app.database import SessionLocal
