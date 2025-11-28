@@ -1,7 +1,26 @@
 #!/usr/bin/env python3
 import json
 import sys
+import os
+import warnings
+import io
 from typing import Any
+
+warnings.filterwarnings('ignore')
+
+# Suppress stdout/stderr during imports
+_original_stdout = sys.stdout
+_original_stderr = sys.stderr
+sys.stdout = io.StringIO()
+sys.stderr = io.StringIO()
+
+try:
+    import google.generativeai as genai
+    genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+    model = genai.GenerativeModel('gemini-2.0-flash')
+finally:
+    sys.stdout = _original_stdout
+    sys.stderr = _original_stderr
 
 def read_message():
     line = sys.stdin.readline()
@@ -12,33 +31,51 @@ def write_message(msg: dict[str, Any]):
     sys.stdout.flush()
 
 def classify_paper(title: str, abstract: str, existing_categories: list[str]) -> dict:
-    """Classify paper into existing category or suggest new one"""
-    keywords = (title + " " + abstract).lower()
+    """Classify paper into multiple categories using LLM"""
     
-    # Simple keyword matching
-    category_keywords = {
-        "machine learning": ["learning", "neural", "model", "training"],
-        "computer vision": ["image", "vision", "visual", "detection"],
-        "nlp": ["language", "text", "nlp", "linguistic"],
-        "robotics": ["robot", "autonomous", "control"],
-        "security": ["security", "attack", "vulnerability", "encryption"]
-    }
+    categories = ["AI", "singlecell", "longread", "methods", "benchmark", "dataset", 
+                  "epigenetics", "transcriptomics", "genomics", "microbial", "ecology"]
     
-    scores = {}
-    for cat in existing_categories:
-        cat_lower = cat.lower()
-        if cat_lower in category_keywords:
-            scores[cat] = sum(1 for kw in category_keywords[cat_lower] if kw in keywords)
-    
-    if scores and max(scores.values()) > 0:
-        return {"category": max(scores, key=scores.get), "confidence": "existing"}
-    
-    # Suggest new category based on keywords
-    for cat, kws in category_keywords.items():
-        if sum(1 for kw in kws if kw in keywords) >= 2:
-            return {"category": cat, "confidence": "suggested"}
-    
-    return {"category": "uncategorized", "confidence": "low"}
+    prompt = f"""Classify this research paper into relevant categories. Select ALL applicable categories.
+
+Categories:
+- AI: artificial intelligence, machine learning, deep learning, neural networks
+- singlecell: single-cell sequencing, scRNA-seq, cell types
+- longread: long-read sequencing, nanopore, PacBio
+- methods: new methods, algorithms, tools, frameworks
+- benchmark: benchmarking, comparison studies, evaluations
+- dataset: new datasets, databases, data collections
+- epigenetics: DNA methylation, histone modifications, chromatin
+- transcriptomics: RNA-seq, gene expression, transcriptome
+- genomics: genome sequencing, DNA analysis, variants
+- microbial: bacteria, microbiome, pathogens
+- ecology: ecosystems, biodiversity, species
+
+Paper:
+Title: {title}
+Abstract: {abstract[:500]}
+
+Return ONLY a JSON array of category names. Example: ["AI", "methods"]"""
+
+    try:
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+        
+        # Remove markdown code blocks if present
+        if '```' in text:
+            text = text.split('```')[1]
+            if text.startswith('json'):
+                text = text[4:]
+        
+        # Extract JSON array
+        text = text.strip()
+        result = json.loads(text)
+        
+        # Validate categories
+        valid_cats = [c for c in result if c in categories]
+        return {"categories": valid_cats}
+    except Exception as e:
+        return {"categories": []}
 
 def handle_request(req: dict) -> dict:
     method = req.get("method")

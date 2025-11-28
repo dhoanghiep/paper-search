@@ -179,7 +179,12 @@ def show(paper_id, full):
         console.print(f"[yellow]ID:[/yellow] {paper.arxiv_id}")
         console.print(f"[yellow]Authors:[/yellow] {paper.authors}")
         console.print(f"[yellow]Published:[/yellow] {paper.published_date}")
-        console.print(f"[yellow]URL:[/yellow] {paper.pdf_url}\n")
+        console.print(f"[yellow]URL:[/yellow] {paper.pdf_url}")
+        
+        if paper.categories:
+            cats = ", ".join([c.name for c in paper.categories])
+            console.print(f"[yellow]Categories:[/yellow] {cats}")
+        console.print()
         
         if full:
             console.print(f"[bold]Abstract:[/bold]")
@@ -192,6 +197,123 @@ def show(paper_id, full):
             console.print(paper.summary)
         else:
             console.print(f"\n[yellow]⚠ Not yet processed[/yellow]")
+    finally:
+        db.close()
+
+@cli.group()
+def explore():
+    """Explore papers with detailed analysis tools"""
+    pass
+
+@explore.command()
+@click.argument('paper_id', type=int)
+def tldr(paper_id):
+    """Generate one-sentence summary"""
+    from app.database import SessionLocal
+    from app.models import Paper
+    from app.orchestrator import summarization_client
+    
+    db = SessionLocal()
+    try:
+        paper = db.query(Paper).filter(Paper.id == paper_id).first()
+        if not paper:
+            console.print(f"[red]✗ Paper {paper_id} not found[/red]")
+            return
+        
+        console.print(f"\n[bold cyan]Paper #{paper.id}:[/bold cyan] {paper.title}\n")
+        with console.status("[cyan]Generating TLDR...", spinner="dots"):
+            result = summarization_client.call("generate_tldr", {"paper_id": paper_id})
+        console.print(f"[yellow]TLDR:[/yellow] {result.get('tldr', 'N/A')}")
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+    finally:
+        db.close()
+
+@explore.command()
+@click.argument('paper_id', type=int)
+def points(paper_id):
+    """Extract key points"""
+    from app.database import SessionLocal
+    from app.models import Paper
+    from app.orchestrator import summarization_client
+    
+    db = SessionLocal()
+    try:
+        paper = db.query(Paper).filter(Paper.id == paper_id).first()
+        if not paper:
+            console.print(f"[red]✗ Paper {paper_id} not found[/red]")
+            return
+        
+        console.print(f"\n[bold cyan]Paper #{paper.id}:[/bold cyan] {paper.title}\n")
+        with console.status("[cyan]Extracting key points...", spinner="dots"):
+            result = summarization_client.call("extract_key_points", {"paper_id": paper_id})
+        console.print(f"[bold]Key Points:[/bold]")
+        console.print(result.get('points', 'N/A'))
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+    finally:
+        db.close()
+
+@explore.command()
+@click.argument('paper_id', type=int)
+def detailed(paper_id):
+    """Generate detailed analysis"""
+    from app.database import SessionLocal
+    from app.models import Paper
+    from app.orchestrator import summarization_client
+    
+    db = SessionLocal()
+    try:
+        paper = db.query(Paper).filter(Paper.id == paper_id).first()
+        if not paper:
+            console.print(f"[red]✗ Paper {paper_id} not found[/red]")
+            return
+        
+        console.print(f"\n[bold cyan]Paper #{paper.id}:[/bold cyan] {paper.title}\n")
+        with console.status("[cyan]Generating detailed analysis...", spinner="dots"):
+            result = summarization_client.call("summarize_detailed", {"paper_id": paper_id})
+        console.print(f"[bold]Detailed Analysis:[/bold]")
+        console.print(result.get('summary', 'N/A'))
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+    finally:
+        db.close()
+
+@explore.command()
+@click.argument('paper_id', type=int)
+def all(paper_id):
+    """Show all analysis (TLDR, key points, detailed)"""
+    from app.database import SessionLocal
+    from app.models import Paper
+    from app.orchestrator import summarization_client
+    
+    db = SessionLocal()
+    try:
+        paper = db.query(Paper).filter(Paper.id == paper_id).first()
+        if not paper:
+            console.print(f"[red]✗ Paper {paper_id} not found[/red]")
+            return
+        
+        console.print(f"\n[bold cyan]Exploring Paper #{paper.id}[/bold cyan]")
+        console.print(f"[bold]{paper.title}[/bold]\n")
+        
+        with console.status("[cyan]Generating TLDR...", spinner="dots"):
+            tldr_result = summarization_client.call("generate_tldr", {"paper_id": paper_id})
+        console.print(f"[yellow]TLDR:[/yellow] {tldr_result.get('tldr', 'N/A')}\n")
+        
+        with console.status("[cyan]Extracting key points...", spinner="dots"):
+            points_result = summarization_client.call("extract_key_points", {"paper_id": paper_id})
+        console.print(f"[bold]Key Points:[/bold]")
+        console.print(points_result.get('points', 'N/A'))
+        console.print()
+        
+        with console.status("[cyan]Generating detailed analysis...", spinner="dots"):
+            detailed_result = summarization_client.call("summarize_detailed", {"paper_id": paper_id})
+        console.print(f"[bold]Detailed Analysis:[/bold]")
+        console.print(detailed_result.get('summary', 'N/A'))
+        
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
     finally:
         db.close()
 

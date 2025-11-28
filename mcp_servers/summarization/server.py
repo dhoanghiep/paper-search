@@ -2,26 +2,37 @@
 import json
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+import warnings
+import io
+warnings.filterwarnings('ignore')
 
-import boto3
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.models import Paper
+# Capture stdout/stderr during imports to suppress library errors
+_original_stdout = sys.stdout
+_original_stderr = sys.stderr
+sys.stdout = io.StringIO()
+sys.stderr = io.StringIO()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://paper_user:paper_pass@localhost:5432/paper_search")
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine)
-
-bedrock = boto3.client('bedrock-runtime', region_name=os.getenv('AWS_REGION', 'us-east-1'))
+try:
+    import google.generativeai as genai
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.models import Paper
+    
+    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://paper_user:paper_pass@localhost:5432/paper_search")
+    engine = create_engine(DATABASE_URL)
+    SessionLocal = sessionmaker(bind=engine)
+    
+    genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+    model = genai.GenerativeModel('gemini-2.0-flash')
+finally:
+    # Restore stdout/stderr
+    sys.stdout = _original_stdout
+    sys.stderr = _original_stderr
 
 def call_llm(prompt):
-    response = bedrock.invoke_model(
-        modelId='anthropic.claude-3-haiku-20240307-v1:0',
-        body=json.dumps({"anthropic_version": "bedrock-2023-05-31", "max_tokens": 1024, 
-                        "messages": [{"role": "user", "content": prompt}]})
-    )
-    return json.loads(response['body'].read())['content'][0]['text']
+    response = model.generate_content(prompt)
+    return response.text
 
 def get_paper(paper_id):
     db = SessionLocal()
@@ -34,22 +45,22 @@ def get_paper(paper_id):
         db.close()
 
 def summarize_abstract(paper_id):
-    paper = get_paper(paper_id)
+    paper = get_paper(int(paper_id))
     prompt = f"Summarize in 2-3 sentences:\nTitle: {paper.title}\nAbstract: {paper.abstract}"
     return {"summary": call_llm(prompt)}
 
 def summarize_detailed(paper_id):
-    paper = get_paper(paper_id)
+    paper = get_paper(int(paper_id))
     prompt = f"Provide detailed analysis with main contribution, methodology, key findings, implications:\nTitle: {paper.title}\nAbstract: {paper.abstract}"
     return {"summary": call_llm(prompt)}
 
 def extract_key_points(paper_id):
-    paper = get_paper(paper_id)
+    paper = get_paper(int(paper_id))
     prompt = f"Extract 5-7 key points as bullet list:\nTitle: {paper.title}\nAbstract: {paper.abstract}"
     return {"points": call_llm(prompt)}
 
 def generate_tldr(paper_id):
-    paper = get_paper(paper_id)
+    paper = get_paper(int(paper_id))
     prompt = f"One sentence summary:\nTitle: {paper.title}\nAbstract: {paper.abstract}"
     return {"tldr": call_llm(prompt)}
 

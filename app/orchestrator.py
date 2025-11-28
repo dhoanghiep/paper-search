@@ -28,7 +28,8 @@ class MCPClient:
             [self.python_path, self.server_path],
             input=json.dumps(request),
             capture_output=True,
-            text=True
+            text=True,
+            env=os.environ.copy()
         )
         
         if result.returncode != 0:
@@ -54,7 +55,7 @@ email_client = MCPClient(os.path.join(BASE_DIR, "mcp_servers/email/server.py"))
 def process_paper(paper_id: int) -> Dict[str, Any]:
     """Process a paper through classification and summarization"""
     from app.database import SessionLocal
-    from app.models import Paper
+    from app.models import Paper, Category
     
     db = SessionLocal()
     try:
@@ -71,6 +72,18 @@ def process_paper(paper_id: int) -> Dict[str, Any]:
             "abstract": paper.abstract,
             "existing_categories": categories
         })
+        
+        # Add multiple categories
+        category_names = classification.get("categories", [])
+        for category_name in category_names:
+            if category_name:
+                category = db.query(Category).filter(Category.name == category_name).first()
+                if not category:
+                    category = Category(name=category_name)
+                    db.add(category)
+                    db.flush()
+                if category not in paper.categories:
+                    paper.categories.append(category)
         
         # Summarize - pass paper_id, not title/abstract
         summary = summarization_client.call("summarize_abstract", {
