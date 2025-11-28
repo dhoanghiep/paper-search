@@ -49,30 +49,44 @@ def scrape_all_sources():
 
 def process_papers_job():
     """Process unprocessed papers in batches"""
+    from datetime import datetime
+    from app.models import Paper, JobHistory
+    
+    db = SessionLocal()
+    job = JobHistory(job_type='process', started_at=datetime.utcnow(), status='running')
+    db.add(job)
+    db.commit()
+    
     try:
         logger.info("Processing papers...")
         result = process_new_papers(limit=settings.PROCESS_BATCH_SIZE)
+        
+        job.completed_at = datetime.utcnow()
+        job.status = 'success'
+        job.result = result
+        db.commit()
         
         if result['processed'] > 0:
             logger.info(f"Processed {result['processed']} papers, {result['errors']} errors")
         
         # Check if there are more papers to process
-        from app.models import Paper
-        db = SessionLocal()
-        try:
-            remaining = db.query(Paper).filter(
-                (Paper.summary == None) | (Paper.summary == "")
-            ).count()
-            
-            if remaining > 0:
-                logger.info(f"{remaining} papers remaining to process")
-            else:
-                logger.info("All papers processed")
-        finally:
-            db.close()
+        remaining = db.query(Paper).filter(
+            (Paper.summary == None) | (Paper.summary == "")
+        ).count()
+        
+        if remaining > 0:
+            logger.info(f"{remaining} papers remaining to process")
+        else:
+            logger.info("All papers processed")
             
     except Exception as e:
         logger.error(f"Error processing papers: {e}")
+        job.completed_at = datetime.utcnow()
+        job.status = 'failed'
+        job.error = str(e)
+        db.commit()
+    finally:
+        db.close()
 
 def daily_report_job():
     """Generate daily report"""
