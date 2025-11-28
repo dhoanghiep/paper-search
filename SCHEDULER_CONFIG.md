@@ -2,13 +2,28 @@
 
 ## Current Settings
 
-The scheduler is configured to **process 10 papers every 5 minutes** until all papers are processed.
+### Daily Scraping (6:00 AM)
+- **bioRxiv:** All papers from last 7 days (up to 1000 papers)
+- **PubMed:** All papers with keyword "longread" (up to 1000 papers)
 
-### Configuration Location
+### Paper Processing (Every 5 minutes)
+- **Batch Size:** 10 papers per run
+- **Continues until all papers are processed**
+
+### Daily Report (9:00 AM)
+- Generates daily summary report
+
+## Configuration Location
 
 **File:** `app/config.py`
 
 ```python
+# Daily Scraping Configuration
+BIORXIV_SCRAPE_MAX: int = 1000      # Fetch up to 1000 papers
+BIORXIV_DAYS_BACK: int = 7          # From last 7 days
+PUBMED_SCRAPE_QUERY: str = "longread"  # Search query
+PUBMED_SCRAPE_MAX: int = 1000       # Fetch up to 1000 papers
+
 # Processing
 PROCESS_BATCH_SIZE: int = 10           # Papers to process per job run
 PROCESS_INTERVAL_MINUTES: int = 5      # Process every 5 minutes
@@ -19,7 +34,9 @@ PROCESS_INTERVAL_MINUTES: int = 5      # Process every 5 minutes
 **File:** `app/scheduler.py`
 
 1. **Daily Scraping** - 6:00 AM
-   - Scrapes 10 papers from each source (arXiv, bioRxiv, PubMed)
+   - **bioRxiv:** Fetches all papers from last 7 days (up to 1000)
+   - **PubMed:** Fetches all papers matching "longread" (up to 1000)
+   - Skips duplicates automatically
    
 2. **Paper Processing** - Every 5 minutes
    - Processes 10 unprocessed papers
@@ -28,6 +45,57 @@ PROCESS_INTERVAL_MINUTES: int = 5      # Process every 5 minutes
    
 3. **Daily Report** - 9:00 AM
    - Generates daily summary report
+
+## Adjusting Daily Scraping
+
+### Change bioRxiv Settings
+
+```python
+# app/config.py
+
+# Fetch more papers
+BIORXIV_SCRAPE_MAX: int = 2000
+
+# Look back further
+BIORXIV_DAYS_BACK: int = 14  # Last 14 days
+```
+
+### Change PubMed Query
+
+```python
+# app/config.py
+
+# Different keyword
+PUBMED_SCRAPE_QUERY: str = "nanopore"
+
+# Multiple keywords
+PUBMED_SCRAPE_QUERY: str = "longread OR nanopore OR pacbio"
+
+# More specific
+PUBMED_SCRAPE_QUERY: str = "longread AND sequencing"
+
+# Fetch more results
+PUBMED_SCRAPE_MAX: int = 2000
+```
+
+### Common PubMed Queries
+
+```python
+# Long-read sequencing
+PUBMED_SCRAPE_QUERY: str = "longread OR nanopore OR pacbio"
+
+# Single-cell
+PUBMED_SCRAPE_QUERY: str = "single-cell OR scRNA-seq"
+
+# Cancer genomics
+PUBMED_SCRAPE_QUERY: str = "cancer AND genomics"
+
+# CRISPR
+PUBMED_SCRAPE_QUERY: str = "CRISPR"
+
+# Bioinformatics tools
+PUBMED_SCRAPE_QUERY: str = "bioinformatics AND tool"
+```
 
 ## How It Works
 
@@ -119,6 +187,30 @@ tail -f backend.log
 
 # Or check application logs
 ./paper jobs stats
+```
+
+## Manual Scraping
+
+### Trigger Daily Scraping Now (Don't Wait for 6 AM)
+```bash
+# Scrape all sources (bioRxiv + PubMed longread)
+./paper jobs trigger-scrape --source all
+
+# Or use API
+curl -X POST "http://localhost:8000/jobs/scrape?source=biorxiv&max_results=1000"
+curl -X POST "http://localhost:8000/jobs/scrape?source=pubmed&max_results=1000&query=longread"
+```
+
+### Scrape Specific Sources
+```bash
+# bioRxiv only
+./paper scrape biorxiv --max-results 1000
+
+# PubMed with custom query
+./paper scrape pubmed --query "longread" --max-results 1000
+
+# PubMed with different query
+./paper scrape pubmed --query "nanopore" --max-results 500
 ```
 
 ## Manual Processing
