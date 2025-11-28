@@ -15,29 +15,30 @@ def jobs():
 @jobs.command()
 def status():
     """Show processing status"""
+    from app.database import SessionLocal
+    from app.models import Paper
+    
+    db = SessionLocal()
     try:
-        response = httpx.get(f"{API_BASE}/jobs/status", timeout=5.0)
-        response.raise_for_status()
-        data = response.json()
+        total = db.query(Paper).count()
+        processed = db.query(Paper).filter(Paper.summary != None, Paper.summary != "").count()
+        unprocessed = total - processed
         
         table = Table(title="Processing Status")
         table.add_column("Metric", style="cyan")
         table.add_column("Value", style="green")
         
-        table.add_row("Total Papers", str(data.get("total_papers", 0)))
-        table.add_row("Processed", str(data.get("processed", 0)))
-        table.add_row("Unprocessed", str(data.get("unprocessed", 0)))
+        table.add_row("Total Papers", str(total))
+        table.add_row("Processed", str(processed))
+        table.add_row("Unprocessed", str(unprocessed))
         
-        if data.get("processed", 0) > 0:
-            rate = round(data["processed"] / data["total_papers"] * 100, 2)
+        if processed > 0:
+            rate = round(processed / total * 100, 2)
             table.add_row("Processing Rate", f"{rate}%")
         
         console.print(table)
-        
-    except httpx.ConnectError:
-        console.print("[red]✗ Error: API not running. Start with: uvicorn app.main:app[/red]")
-    except Exception as e:
-        console.print(f"[red]✗ Error: {e}[/red]")
+    finally:
+        db.close()
 
 @jobs.command()
 def scheduler():
@@ -189,21 +190,20 @@ def trigger_process(limit):
 @jobs.command()
 def stats():
     """Show comprehensive job statistics"""
+    from datetime import datetime, timedelta
+    from app.database import SessionLocal
+    from app.models import Paper, Category
+    
+    db = SessionLocal()
     try:
-        # Get processing status
-        status_response = httpx.get(f"{API_BASE}/jobs/status", timeout=5.0)
-        status_response.raise_for_status()
-        status_data = status_response.json()
+        total = db.query(Paper).count()
+        processed = db.query(Paper).filter(Paper.summary != None, Paper.summary != "").count()
+        unprocessed = total - processed
         
-        # Get scheduler status
-        scheduler_response = httpx.get(f"{API_BASE}/jobs/scheduler/status", timeout=5.0)
-        scheduler_response.raise_for_status()
-        scheduler_data = scheduler_response.json()
+        week_ago = datetime.now() - timedelta(days=7)
+        papers_this_week = db.query(Paper).filter(Paper.created_at >= week_ago).count()
         
-        # Get general stats
-        stats_response = httpx.get(f"{API_BASE}/stats", timeout=5.0)
-        stats_response.raise_for_status()
-        stats_data = stats_response.json()
+        total_categories = db.query(Category).count()
         
         console.print("[bold cyan]Job Statistics[/bold cyan]\n")
         
@@ -212,25 +212,27 @@ def stats():
         table1.add_column("Metric", style="cyan")
         table1.add_column("Value", style="green")
         
-        table1.add_row("Total Papers", str(status_data.get("total_papers", 0)))
-        table1.add_row("Processed", str(status_data.get("processed", 0)))
-        table1.add_row("Unprocessed", str(status_data.get("unprocessed", 0)))
-        table1.add_row("Papers This Week", str(stats_data.get("papers_this_week", 0)))
+        table1.add_row("Total Papers", str(total))
+        table1.add_row("Processed", str(processed))
+        table1.add_row("Unprocessed", str(unprocessed))
+        table1.add_row("Papers This Week", str(papers_this_week))
+        table1.add_row("Total Categories", str(total_categories))
         
         console.print(table1)
         console.print()
         
         # Scheduler Status
-        console.print(f"[bold]Scheduler:[/bold] {scheduler_data.get('status', 'unknown')}")
-        
-        if scheduler_data.get("status") == "running":
-            jobs_list = scheduler_data.get("jobs", [])
-            console.print(f"[bold]Active Jobs:[/bold] {len(jobs_list)}")
-        
-    except httpx.ConnectError:
-        console.print("[red]✗ Error: API not running. Start with: uvicorn app.main:app[/red]")
-    except Exception as e:
-        console.print(f"[red]✗ Error: {e}[/red]")
+        try:
+            response = httpx.get(f"{API_BASE}/jobs/scheduler/status", timeout=5.0)
+            scheduler_data = response.json()
+            console.print(f"[bold]Scheduler:[/bold] {scheduler_data.get('status', 'unknown')}")
+            if scheduler_data.get("status") == "running":
+                jobs_list = scheduler_data.get("jobs", [])
+                console.print(f"[bold]Active Jobs:[/bold] {len(jobs_list)}")
+        except:
+            console.print(f"[bold]Scheduler:[/bold] [yellow]API not available[/yellow]")
+    finally:
+        db.close()
 
 @jobs.command()
 @click.option('--limit', default=20, help='Number of recent jobs to show')
