@@ -226,7 +226,8 @@ def process(limit):
 @click.option('--limit', default=20, help='Number of papers to show')
 @click.option('--unprocessed', is_flag=True, help='Show only unprocessed papers')
 @click.option('--category', multiple=True, help='Filter by category name (can specify multiple)')
-def list(limit, unprocessed, category):
+@click.option('--total', is_flag=True, help='Show total count in database')
+def list(limit, unprocessed, category, total):
     """List papers"""
     from app.database import SessionLocal
     from app.models import Paper, Category
@@ -235,17 +236,32 @@ def list(limit, unprocessed, category):
     db = SessionLocal()
     try:
         query = db.query(Paper)
+        
+        # Get total count before filtering
+        if total:
+            total_count = query.count()
+        
         if unprocessed:
             query = query.filter((Paper.summary == None) | (Paper.summary == ""))
         if category:
             query = query.join(Paper.categories).filter(
                 or_(*[Category.name.ilike(f"%{cat}%") for cat in category])
             ).distinct()
+        
+        # Get filtered count
+        filtered_count = query.count()
         papers = query.order_by(Paper.created_at.desc()).limit(limit).all()
         
-        title = f"Papers ({len(papers)} shown)"
+        title = f"Papers ({len(papers)} shown"
+        if total:
+            title += f" of {filtered_count} filtered, {total_count} total"
+        else:
+            title += f" of {filtered_count}"
+        title += ")"
+        
         if category:
             title += f" - Categories: {', '.join(category)}"
+        
         table = Table(title=title)
         table.add_column("ID", style="cyan")
         table.add_column("Title", style="white", max_width=50)
