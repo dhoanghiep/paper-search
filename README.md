@@ -9,7 +9,7 @@ Multi-source research paper aggregator with AI-powered classification, summariza
 - **AI Processing**: Auto-classification (18 categories) and summarization via Google Gemini
 - **Smart Filtering**: Filter by date range, categories (AND/OR logic), processing status
 - **LLM Reports**: Generate comprehensive research reports with AI analysis
-- **MCP Architecture**: 6 JSON-RPC 2.0 servers for extensibility
+- **MCP Architecture**: 5 JSON-RPC 2.0 servers for extensibility
 - **CLI Interface**: Beautiful terminal interface with Rich
 - **REST API**: FastAPI backend with Swagger UI
 - **Web Interface**: Vanilla JavaScript frontend
@@ -85,13 +85,16 @@ cp .env.example .env
 paper-search/
 ├── app/                    # FastAPI backend
 │   ├── agents/            # Scrapers (arXiv, bioRxiv, PubMed)
+│   │   ├── base_scraper.py    # Base class for all scrapers
+│   │   ├── scraper.py         # ArxivScraper
+│   │   ├── biorxiv_scraper.py # BiorxivScraper
+│   │   └── pubmed_scraper.py  # PubmedScraper
 │   ├── routers/           # API endpoints
 │   ├── orchestrator.py    # MCP coordination
 │   ├── pipeline.py        # Auto-processing
 │   ├── scheduler.py       # Automated jobs
 │   └── cli_main.py        # CLI interface (800+ lines)
-├── mcp_servers/           # MCP servers (6 total)
-│   ├── arxiv/            # arXiv operations
+├── mcp_servers/           # MCP servers (5 total)
 │   ├── classification/   # AI classification (18 categories)
 │   ├── database/         # Database operations
 │   ├── summarization/    # AI summarization
@@ -109,16 +112,20 @@ paper-search/
 ```bash
 ./paper scrape biorxiv --max-results 50
 ./paper scrape arxiv --max-results 10
-./paper scrape pubmed --max-results 20 --query "cancer"
+./paper scrape pubmed --query "cancer" --max-results 20
+./paper scrape pubmed --search-only --query "CRISPR"
+./paper scrape pubmed --fetch-ids "41280279,41208948"
+./paper scrape pubmed --daily --topic "bioinformatics"
+./paper scrape pubmed --daily --date 2024/11/28 --topic "CRISPR"
 ./paper scrape all --max-results 10
 ```
 
-### PubMed Operations
+### PubMed Operations (Legacy - Deprecated)
 ```bash
-./paper pubmed search "query" --max-results 20    # Search only
-./paper pubmed fetch "PMID1,PMID2,PMID3"          # Fetch specific
-./paper pubmed daily --topic "topic"              # Today's papers
-./paper pubmed daily --date 2024/11/28 --topic "CRISPR"
+# Old commands still work but show deprecation warning
+./paper pubmed search "query" --max-results 20
+./paper pubmed fetch "PMID1,PMID2,PMID3"
+./paper pubmed daily --topic "topic"
 ```
 
 ### Paper Management
@@ -341,6 +348,9 @@ MIT
 ✅ **Production Ready** - Core features complete (95%)
 
 **Recent Updates:**
+- BaseScraper class eliminates code duplication
+- Unified PubMed commands under scrape group
+- Removed redundant arXiv MCP server
 - LLM-based report generation
 - PubMed daily tracking
 - Multiple category filtering (AND logic)
