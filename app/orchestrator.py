@@ -85,10 +85,15 @@ def process_paper(paper_id: int) -> Dict[str, Any]:
                 if category not in paper.categories:
                     paper.categories.append(category)
         
-        # Summarize - pass paper_id, not title/abstract
-        summary = summarization_client.call("summarize_abstract", {
-            "paper_id": paper_id
-        })
+        # Use abstract as summary if available, otherwise use LLM
+        if paper.abstract and len(paper.abstract.strip()) > 50:
+            summary_text = paper.abstract
+            summary = {"summary": summary_text, "source": "abstract"}
+        else:
+            summary = summarization_client.call("summarize_abstract", {
+                "paper_id": paper_id
+            })
+            summary["source"] = "llm"
         
         # Update paper
         paper.summary = summary.get("summary", "")
