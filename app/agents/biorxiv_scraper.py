@@ -30,18 +30,27 @@ class BiorxivScraper:
     def parse_biorxiv_response(self, data, max_results):
         """Parse bioRxiv API JSON response"""
         papers = []
-        collection = data.get("collection", [])[:max_results]
+        collection = data.get("collection", [])
         
         for entry in collection:
+            title = entry.get("title", "").strip()
+            
+            # Skip withdrawn papers
+            if title.upper().startswith("WITHDRAWN:"):
+                continue
+            
             paper = {
                 "id": entry.get("doi", ""),
-                "title": entry.get("title", "").strip(),
+                "title": title,
                 "authors": entry.get("authors", ""),
                 "abstract": entry.get("abstract", "").strip(),
                 "published": datetime.fromisoformat(entry.get("date", "").split("T")[0]),
                 "pdf_url": f"https://www.biorxiv.org/content/{entry.get('doi', '')}v1.full.pdf"
             }
             papers.append(paper)
+            
+            if len(papers) >= max_results:
+                break
         
         return papers
     

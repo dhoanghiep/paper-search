@@ -127,9 +127,16 @@ def add(url):
             return
         
         entry = collection[0]
+        title = entry.get("title", "").strip()
+        
+        # Skip withdrawn papers
+        if title.upper().startswith("WITHDRAWN:"):
+            console.print("[yellow]⚠ Paper is withdrawn, skipping[/yellow]")
+            return
+        
         paper = Paper(
             arxiv_id=doi,
-            title=entry.get("title", "").strip(),
+            title=title,
             authors=entry.get("authors", ""),
             abstract=entry.get("abstract", "").strip(),
             published_date=datetime.fromisoformat(entry.get("date", "").split("T")[0]),
@@ -188,9 +195,16 @@ def add(doi):
             return
         
         entry = collection[0]
+        title = entry.get("title", "").strip()
+        
+        # Skip withdrawn papers
+        if title.upper().startswith("WITHDRAWN:"):
+            console.print("[yellow]⚠ Paper is withdrawn, skipping[/yellow]")
+            return
+        
         paper = Paper(
             arxiv_id=doi,
-            title=entry.get("title", "").strip(),
+            title=title,
             authors=entry.get("authors", ""),
             abstract=entry.get("abstract", "").strip(),
             published_date=datetime.fromisoformat(entry.get("date", "").split("T")[0]),
