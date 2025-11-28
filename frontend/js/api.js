@@ -1,4 +1,7 @@
-const API_BASE = 'http://localhost:8000';
+// Try to detect backend URL, fallback to relative path
+const API_BASE = window.API_BASE || `http://${window.location.hostname}:8000`;
+
+console.log('API Base URL:', API_BASE);
 
 export const api = {
     async get(endpoint) {

@@ -1,6 +1,7 @@
 import json
 import subprocess
 import os
+import sys
 from typing import Dict, Any
 
 class MCPClient:
@@ -8,7 +9,8 @@ class MCPClient:
     
     def __init__(self, server_path: str):
         self.server_path = server_path
-        self.python_path = os.path.join(os.path.dirname(__file__), '../venv/bin/python3')
+        # Use the same Python interpreter that's running this script
+        self.python_path = sys.executable
     
     def call(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
         """Call MCP server tool"""
