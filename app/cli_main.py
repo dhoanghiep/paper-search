@@ -4,6 +4,7 @@ from app.cli import console
 from app.cli.scrape import scrape
 from app.cli.papers import papers
 from app.cli.reports import report, explore, categories
+from app.cli.jobs import jobs
 
 @click.group()
 @click.version_option(version="1.0.0")
@@ -17,6 +18,7 @@ cli.add_command(papers)
 cli.add_command(report)
 cli.add_command(explore)
 cli.add_command(categories)
+cli.add_command(jobs)
 
 # Deprecated pubmed group
 @cli.group()

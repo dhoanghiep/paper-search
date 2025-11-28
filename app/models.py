@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -39,3 +39,15 @@ class Report(Base):
     report_type = Column(String)
     content = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class JobHistory(Base):
+    __tablename__ = "job_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    job_type = Column(String, index=True)  # scrape, process, report
+    source = Column(String)  # arxiv, biorxiv, pubmed (for scrape jobs)
+    started_at = Column(DateTime, default=datetime.utcnow, index=True)
+    completed_at = Column(DateTime)
+    status = Column(String)  # running, success, failed
+    result = Column(JSON)  # Store job results
+    error = Column(Text)  # Store error if failed
