@@ -210,15 +210,39 @@ def add(doi):
 
 @cli.command()
 @click.option('--limit', default=10, help='Number of papers to process')
-def process(limit):
+@click.option('--ids', help='Comma-separated paper IDs to process (e.g., 1,2,3)')
+def process(limit, ids):
     """Process unprocessed papers (classify + summarize)"""
     from app.pipeline import process_new_papers
+    from app.orchestrator import process_paper
     
-    console.print(f"[cyan]Processing up to {limit} papers...[/cyan]")
-    result = process_new_papers(limit)
-    console.print(f"[green]✓ Processed: {result['processed']}[/green]")
-    if result['errors'] > 0:
-        console.print(f"[yellow]⚠ Errors: {result['errors']}[/yellow]")
+    if ids:
+        # Process specific papers by ID
+        paper_ids = [int(id.strip()) for id in ids.split(',')]
+        console.print(f"[cyan]Processing {len(paper_ids)} specific papers...[/cyan]")
+        
+        processed = 0
+        errors = 0
+        for paper_id in paper_ids:
+            try:
+                console.print(f"[cyan]Processing paper {paper_id}...[/cyan]")
+                process_paper(paper_id)
+                processed += 1
+                console.print(f"[green]✓ Paper {paper_id} processed[/green]")
+            except Exception as e:
+                console.print(f"[red]✗ Error processing paper {paper_id}: {e}[/red]")
+                errors += 1
+        
+        console.print(f"\n[green]✓ Processed: {processed}[/green]")
+        if errors > 0:
+            console.print(f"[yellow]⚠ Errors: {errors}[/yellow]")
+    else:
+        # Process unprocessed papers
+        console.print(f"[cyan]Processing up to {limit} papers...[/cyan]")
+        result = process_new_papers(limit)
+        console.print(f"[green]✓ Processed: {result['processed']}[/green]")
+        if result['errors'] > 0:
+            console.print(f"[yellow]⚠ Errors: {result['errors']}[/yellow]")
 
 # ============= LIST COMMANDS =============
 
