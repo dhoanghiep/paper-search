@@ -852,27 +852,38 @@ def generate(start_date, end_date, category, save):
             return
         
         console.print(f"[green]Found {len(papers)} papers[/green]")
-        console.print("[cyan]Generating report with LLM...[/cyan]\n")
+        console.print("[cyan]Generating report with LLM via MCP...[/cyan]\n")
         
-        # Prepare summaries for LLM
-        summaries_text = ""
-        for i, paper in enumerate(papers, 1):
+        # Prepare data for MCP
+        papers_data = []
+        for paper in papers:
             cats = ", ".join([c.name for c in paper.categories]) if paper.categories else "Uncategorized"
-            summaries_text += f"\n{i}. {paper.title}\n"
-            summaries_text += f"   Categories: {cats}\n"
-            summaries_text += f"   Published: {paper.published_date.strftime('%Y-%m-%d')}\n"
-            summaries_text += f"   Summary: {paper.summary[:500]}...\n"
+            papers_data.append({
+                "title": paper.title,
+                "categories": cats,
+                "published_date": paper.published_date.strftime('%Y-%m-%d'),
+                "summary": paper.summary
+            })
         
-        # Call LLM
+        # Generate report using LLM (same logic as MCP server)
         try:
             import google.generativeai as genai
+            
             genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
             model = genai.GenerativeModel('gemini-2.0-flash')
+            
+            # Prepare summaries
+            summaries_text = ""
+            for i, paper_data in enumerate(papers_data, 1):
+                summaries_text += f"\n{i}. {paper_data['title']}\n"
+                summaries_text += f"   Categories: {paper_data['categories']}\n"
+                summaries_text += f"   Published: {paper_data['published_date']}\n"
+                summaries_text += f"   Summary: {paper_data['summary'][:500]}...\n"
             
             prompt = f"""Generate a comprehensive research report based on these papers published between {start_date} and {end_date}.
 
 Categories: {', '.join(category) if category else 'All'}
-Number of papers: {len(papers)}
+Number of papers: {len(papers_data)}
 
 Papers and their summaries:
 {summaries_text}
@@ -909,7 +920,7 @@ Format the report in markdown."""
                 console.print(full_report)
                 
         except Exception as e:
-            console.print(f"[red]✗ Error generating report with LLM: {e}[/red]")
+            console.print(f"[red]✗ Error generating report: {e}[/red]")
             console.print("[yellow]Make sure GOOGLE_API_KEY is set in .env[/yellow]")
             
     finally:

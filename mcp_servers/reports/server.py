@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import sys
+import os
 from datetime import datetime
 from typing import Any
 
@@ -58,6 +59,41 @@ def generate_period_report(papers: list[dict], period: str) -> str:
     
     return report
 
+def generate_llm_report(papers_data: list[dict], start_date: str, end_date: str, categories: list[str]) -> str:
+    """Generate comprehensive LLM-based report"""
+    import google.generativeai as genai
+    
+    genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+    model = genai.GenerativeModel('gemini-2.0-flash')
+    
+    # Prepare summaries
+    summaries_text = ""
+    for i, paper in enumerate(papers_data, 1):
+        summaries_text += f"\n{i}. {paper['title']}\n"
+        summaries_text += f"   Categories: {paper.get('categories', 'Uncategorized')}\n"
+        summaries_text += f"   Published: {paper.get('published_date', 'N/A')}\n"
+        summaries_text += f"   Summary: {paper.get('summary', 'No summary')[:500]}...\n"
+    
+    prompt = f"""Generate a comprehensive research report based on these papers published between {start_date} and {end_date}.
+
+Categories: {', '.join(categories) if categories else 'All'}
+Number of papers: {len(papers_data)}
+
+Papers and their summaries:
+{summaries_text}
+
+Please provide:
+1. Executive Summary (2-3 paragraphs)
+2. Key Themes and Trends
+3. Notable Findings by Category
+4. Emerging Research Directions
+5. Conclusion
+
+Format the report in markdown."""
+
+    response = model.generate_content(prompt)
+    return response.text
+
 def handle_request(req: dict) -> dict:
     method = req.get("method")
     params = req.get("params", {})
@@ -95,6 +131,20 @@ def handle_request(req: dict) -> dict:
                         },
                         "required": ["papers", "period"]
                     }
+                },
+                {
+                    "name": "generate_llm_report",
+                    "description": "Generate comprehensive LLM-based research report",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "papers_data": {"type": "array"},
+                            "start_date": {"type": "string"},
+                            "end_date": {"type": "string"},
+                            "categories": {"type": "array"}
+                        },
+                        "required": ["papers_data", "start_date", "end_date", "categories"]
+                    }
                 }
             ]
         }
@@ -109,6 +159,15 @@ def handle_request(req: dict) -> dict:
         
         if tool == "generate_period_report":
             result = generate_period_report(args.get("papers", []), args.get("period", "daily"))
+            return {"content": [{"type": "text", "text": result}]}
+        
+        if tool == "generate_llm_report":
+            result = generate_llm_report(
+                args.get("papers_data", []),
+                args.get("start_date", ""),
+                args.get("end_date", ""),
+                args.get("categories", [])
+            )
             return {"content": [{"type": "text", "text": result}]}
     
     return {"error": "Unknown method"}
