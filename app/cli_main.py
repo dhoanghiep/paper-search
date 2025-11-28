@@ -107,11 +107,12 @@ def process(limit):
 @cli.command()
 @click.option('--limit', default=20, help='Number of papers to show')
 @click.option('--unprocessed', is_flag=True, help='Show only unprocessed papers')
-@click.option('--category', help='Filter by category name')
+@click.option('--category', multiple=True, help='Filter by category name (can specify multiple)')
 def list(limit, unprocessed, category):
     """List papers"""
     from app.database import SessionLocal
     from app.models import Paper, Category
+    from sqlalchemy import or_
     
     db = SessionLocal()
     try:
@@ -119,12 +120,14 @@ def list(limit, unprocessed, category):
         if unprocessed:
             query = query.filter((Paper.summary == None) | (Paper.summary == ""))
         if category:
-            query = query.join(Paper.categories).filter(Category.name.ilike(f"%{category}%"))
+            query = query.join(Paper.categories).filter(
+                or_(*[Category.name.ilike(f"%{cat}%") for cat in category])
+            ).distinct()
         papers = query.order_by(Paper.created_at.desc()).limit(limit).all()
         
         title = f"Papers ({len(papers)} shown)"
         if category:
-            title += f" - Category: {category}"
+            title += f" - Categories: {', '.join(category)}"
         table = Table(title=title)
         table.add_column("ID", style="cyan")
         table.add_column("Title", style="white", max_width=50)
