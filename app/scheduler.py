@@ -38,11 +38,30 @@ def scrape_all_sources():
         db.close()
 
 def process_papers_job():
-    """Process unprocessed papers"""
+    """Process 10 unprocessed papers"""
     try:
         logger.info("Processing papers...")
-        result = process_new_papers(limit=50)
-        logger.info(f"Processed {result['processed']} papers, {result['errors']} errors")
+        result = process_new_papers(limit=10)
+        
+        if result['processed'] > 0:
+            logger.info(f"Processed {result['processed']} papers, {result['errors']} errors")
+        
+        # Check if there are more papers to process
+        from app.database import SessionLocal
+        from app.models import Paper
+        db = SessionLocal()
+        try:
+            remaining = db.query(Paper).filter(
+                (Paper.summary == None) | (Paper.summary == "")
+            ).count()
+            
+            if remaining > 0:
+                logger.info(f"{remaining} papers remaining to process")
+            else:
+                logger.info("All papers processed")
+        finally:
+            db.close()
+            
     except Exception as e:
         logger.error(f"Error processing papers: {e}")
 
@@ -60,14 +79,14 @@ def start_scheduler():
     # Daily scraping at 6 AM
     scheduler.add_job(scrape_all_sources, CronTrigger(hour=6, minute=0), id="daily_scrape")
     
-    # Process papers every 2 hours
-    scheduler.add_job(process_papers_job, CronTrigger(hour="*/2"), id="process_papers")
+    # Process 10 papers every 5 minutes
+    scheduler.add_job(process_papers_job, 'interval', minutes=5, id="process_papers")
     
     # Daily report at 9 AM
     scheduler.add_job(daily_report_job, CronTrigger(hour=9, minute=0), id="daily_report")
     
     scheduler.start()
-    logger.info("Scheduler started")
+    logger.info("Scheduler started - processing 10 papers every 5 minutes")
 
 def stop_scheduler():
     """Stop the scheduler"""
