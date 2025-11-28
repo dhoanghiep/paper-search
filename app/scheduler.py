@@ -6,6 +6,7 @@ from app.agents.biorxiv_scraper import BiorxivScraper
 from app.agents.pubmed_scraper import PubmedScraper
 from app.database import SessionLocal
 from app.reports_job import generate_daily_report
+from app.config import settings
 import asyncio
 import logging
 
@@ -38,16 +39,15 @@ def scrape_all_sources():
         db.close()
 
 def process_papers_job():
-    """Process 10 unprocessed papers"""
+    """Process unprocessed papers in batches"""
     try:
         logger.info("Processing papers...")
-        result = process_new_papers(limit=10)
+        result = process_new_papers(limit=settings.PROCESS_BATCH_SIZE)
         
         if result['processed'] > 0:
             logger.info(f"Processed {result['processed']} papers, {result['errors']} errors")
         
         # Check if there are more papers to process
-        from app.database import SessionLocal
         from app.models import Paper
         db = SessionLocal()
         try:
@@ -79,14 +79,19 @@ def start_scheduler():
     # Daily scraping at 6 AM
     scheduler.add_job(scrape_all_sources, CronTrigger(hour=6, minute=0), id="daily_scrape")
     
-    # Process 10 papers every 5 minutes
-    scheduler.add_job(process_papers_job, 'interval', minutes=5, id="process_papers")
+    # Process papers every N minutes (configured)
+    scheduler.add_job(
+        process_papers_job, 
+        'interval', 
+        minutes=settings.PROCESS_INTERVAL_MINUTES, 
+        id="process_papers"
+    )
     
     # Daily report at 9 AM
     scheduler.add_job(daily_report_job, CronTrigger(hour=9, minute=0), id="daily_report")
     
     scheduler.start()
-    logger.info("Scheduler started - processing 10 papers every 5 minutes")
+    logger.info(f"Scheduler started - processing {settings.PROCESS_BATCH_SIZE} papers every {settings.PROCESS_INTERVAL_MINUTES} minutes")
 
 def stop_scheduler():
     """Stop the scheduler"""
