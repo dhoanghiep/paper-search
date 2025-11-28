@@ -25,6 +25,12 @@ class Settings:
     DEFAULT_DAYS_BACK: int = 7
     DEFAULT_LIMIT: int = 20
     
+    # Daily Scraping Configuration
+    BIORXIV_SCRAPE_MAX: int = 1000  # Fetch up to 1000 papers
+    BIORXIV_DAYS_BACK: int = 7      # From last 7 days
+    PUBMED_SCRAPE_QUERY: str = "longread"  # Search query
+    PUBMED_SCRAPE_MAX: int = 1000   # Fetch up to 1000 papers
+    
     # Email Configuration
     EMAIL_HOST: str = os.getenv("EMAIL_HOST", "smtp.gmail.com")
     EMAIL_PORT: int = int(os.getenv("EMAIL_PORT", "587"))

@@ -15,26 +15,35 @@ logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler()
 
 def scrape_all_sources():
-    """Scrape papers from all sources"""
+    """Scrape papers from all sources daily"""
     db = SessionLocal()
     try:
-        sources = [
-            (ArxivScraper(), "arXiv", 10),
-            (BiorxivScraper(), "bioRxiv", 10),
-            (PubmedScraper(), "PubMed", 10)
-        ]
+        # bioRxiv - fetch all papers from last N days
+        try:
+            logger.info(f"Scraping bioRxiv (all papers from last {settings.BIORXIV_DAYS_BACK} days)...")
+            biorxiv_scraper = BiorxivScraper()
+            biorxiv_papers = asyncio.run(biorxiv_scraper.fetch_recent_papers(
+                max_results=settings.BIORXIV_SCRAPE_MAX, 
+                days_back=settings.BIORXIV_DAYS_BACK
+            ))
+            saved = biorxiv_scraper.save_papers(db, biorxiv_papers)
+            logger.info(f"bioRxiv: fetched {len(biorxiv_papers)}, saved {saved} new papers")
+        except Exception as e:
+            logger.error(f"Error scraping bioRxiv: {e}")
         
-        for scraper, name, max_results in sources:
-            try:
-                logger.info(f"Scraping {name}...")
-                if name == "PubMed":
-                    papers = asyncio.run(scraper.fetch_recent_papers(max_results, "cancer OR diabetes"))
-                else:
-                    papers = asyncio.run(scraper.fetch_recent_papers(max_results))
-                scraper.save_papers(db, papers)
-                logger.info(f"Scraped {len(papers)} papers from {name}")
-            except Exception as e:
-                logger.error(f"Error scraping {name}: {e}")
+        # PubMed - fetch all papers with configured query
+        try:
+            logger.info(f"Scraping PubMed (query: '{settings.PUBMED_SCRAPE_QUERY}')...")
+            pubmed_scraper = PubmedScraper()
+            pubmed_papers = asyncio.run(pubmed_scraper.fetch_recent_papers(
+                max_results=settings.PUBMED_SCRAPE_MAX, 
+                query=settings.PUBMED_SCRAPE_QUERY
+            ))
+            saved = pubmed_scraper.save_papers(db, pubmed_papers)
+            logger.info(f"PubMed: fetched {len(pubmed_papers)}, saved {saved} new papers")
+        except Exception as e:
+            logger.error(f"Error scraping PubMed: {e}")
+            
     finally:
         db.close()
 
