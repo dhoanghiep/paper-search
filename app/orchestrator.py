@@ -77,10 +77,13 @@ class PaperOrchestrator:
             # Get existing categories
             categories = [c.name for c in paper.categories]
             
+            # Prepare content for classification (use title if no abstract)
+            classification_abstract = paper.abstract if paper.abstract else f"Title: {paper.title}"
+            
             # Classify
             classification = self.classification.call("classify_paper", {
                 "title": paper.title,
-                "abstract": paper.abstract,
+                "abstract": classification_abstract,
                 "existing_categories": categories
             })
             
@@ -92,15 +95,20 @@ class PaperOrchestrator:
                     if category not in paper.categories:
                         paper.categories.append(category)
             
-            # Use abstract as summary if available, otherwise use LLM
-            if paper.abstract and len(paper.abstract.strip()) > 50:
+            # Determine summary strategy
+            if paper.abstract and len(paper.abstract.strip()) > 50 and paper.abstract != "No abstract available":
+                # Use abstract directly
                 summary_text = paper.abstract
                 summary = {"summary": summary_text, "source": "abstract"}
+            elif paper.title:
+                # Use title as summary for papers without abstract
+                summary_text = f"Research paper: {paper.title}"
+                if paper.authors:
+                    summary_text += f" (Authors: {paper.authors[:100]})"
+                summary = {"summary": summary_text, "source": "title"}
             else:
-                summary = self.summarization.call("summarize_abstract", {
-                    "paper_id": paper_id
-                })
-                summary["source"] = "llm"
+                # Last resort: minimal summary
+                summary = {"summary": "Paper details not available", "source": "fallback"}
             
             # Update paper
             paper.summary = summary.get("summary", "")
