@@ -19,3 +19,8 @@ build/
 htmlcov/
 *.log
 *.pid
+
+# longread_tracker generated storage
+longread_tracker/pdfs/*.pdf
+longread_tracker/reports/*.md
+longread_tracker/index.json
