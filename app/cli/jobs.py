@@ -162,7 +162,7 @@ def trigger_scrape(source, max_results, days_back, query):
 def trigger_process(limit):
     """Manually trigger paper processing job"""
     from datetime import datetime
-    from app.pipeline import process_new_papers
+    from app.services.processing import process_papers_batch
     from app.database import SessionLocal
     from app.models import JobHistory
     
@@ -174,7 +174,7 @@ def trigger_process(limit):
     try:
         console.print(f"[cyan]Processing {limit} papers...[/cyan]\n")
         
-        result = process_new_papers(limit)
+        result = process_papers_batch(limit)
         
         job.completed_at = datetime.utcnow()
         job.status = 'success'

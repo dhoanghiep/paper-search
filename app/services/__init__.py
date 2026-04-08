@@ -1,5 +1,3 @@
-from .paper_service import PaperService
-from .classification_service import ClassificationService
-from .summarization_service import SummarizationService
+from .processing import process_paper, process_papers_batch
 
-__all__ = ['PaperService', 'ClassificationService', 'SummarizationService']
+__all__ = ['process_paper', 'process_papers_batch']

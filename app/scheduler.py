@@ -1,11 +1,9 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from app.pipeline import process_new_papers
-from app.agents.scraper import ArxivScraper
+from app.services.processing import process_papers_batch
 from app.agents.biorxiv_scraper import BiorxivScraper
 from app.agents.pubmed_scraper import PubmedScraper
 from app.database import SessionLocal
-from app.reports_job import generate_daily_report
 from app.config import settings
 import asyncio
 import logging
@@ -59,7 +57,7 @@ def process_papers_job():
     
     try:
         logger.info("Processing papers...")
-        result = process_new_papers(limit=settings.PROCESS_BATCH_SIZE)
+        result = process_papers_batch(limit=settings.PROCESS_BATCH_SIZE)
         
         job.completed_at = datetime.utcnow()
         job.status = 'success'
@@ -88,15 +86,6 @@ def process_papers_job():
     finally:
         db.close()
 
-def daily_report_job():
-    """Generate daily report"""
-    try:
-        logger.info("Generating daily report...")
-        report = generate_daily_report()
-        logger.info(f"Daily report generated: {len(report)} characters")
-    except Exception as e:
-        logger.error(f"Error generating report: {e}")
-
 def start_scheduler():
     """Start the scheduler with all jobs"""
     # Daily scraping at 6 AM
@@ -109,9 +98,6 @@ def start_scheduler():
         minutes=settings.PROCESS_INTERVAL_MINUTES, 
         id="process_papers"
     )
-    
-    # Daily report at 9 AM
-    scheduler.add_job(daily_report_job, CronTrigger(hour=9, minute=0), id="daily_report")
     
     scheduler.start()
     logger.info(f"Scheduler started - processing {settings.PROCESS_BATCH_SIZE} papers every {settings.PROCESS_INTERVAL_MINUTES} minutes")

@@ -1,81 +1,54 @@
 from fastapi import APIRouter, BackgroundTasks, Depends
-from app.pipeline import process_new_papers
-from app.agents.scraper import ArxivScraper
+from app.services.processing import process_papers_batch
 from app.agents.biorxiv_scraper import BiorxivScraper
 from app.agents.pubmed_scraper import PubmedScraper
 from app.database import get_db
 from sqlalchemy.orm import Session
+import asyncio
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
 @router.post("/scrape")
-async def trigger_scrape(source: str = "arxiv", max_results: int = 10, query: str = None, days_back: int = 30, db: Session = Depends(get_db)):
-    """Manually trigger scraping from arxiv, biorxiv, or pubmed"""
-    if source == "arxiv":
-        scraper = ArxivScraper()
-        papers = await scraper.fetch_recent_papers(max_results)
-    elif source == "biorxiv":
+async def trigger_scrape(source: str = "biorxiv", max_results: int = 10, query: str = None, days_back: int = 30, db: Session = Depends(get_db)):
+    """Manually trigger scraping from biorxiv or pubmed"""
+    if source == "biorxiv":
         scraper = BiorxivScraper()
         papers = await scraper.fetch_recent_papers(max_results, days_back=days_back)
     elif source == "pubmed":
         scraper = PubmedScraper()
-        query = query or "cancer OR diabetes"
-        papers = await scraper.fetch_recent_papers(max_results, query)
+        papers = await scraper.fetch_recent_papers(max_results, query or "longread")
     else:
-        return {"error": f"Unknown source: {source}. Use 'arxiv', 'biorxiv', or 'pubmed'"}
-    
+        return {"error": f"Unknown source: {source}. Use 'biorxiv' or 'pubmed'"}
+
     saved_count = scraper.save_papers(db, papers)
     return {"status": "completed", "source": source, "papers_fetched": len(papers), "papers_saved": saved_count}
 
 @router.post("/process")
 async def trigger_process(background_tasks: BackgroundTasks, limit: int = 10):
-    """Process unprocessed papers"""
-    background_tasks.add_task(process_new_papers, limit)
-    return {"status": "started", "message": "Processing papers in background"}
+    """Process unprocessed papers in the background"""
+    background_tasks.add_task(process_papers_batch, limit)
+    return {"status": "started", "message": f"Processing up to {limit} papers in background"}
 
 @router.post("/process-sync")
 async def trigger_process_sync(limit: int = 10):
     """Process papers synchronously (for testing)"""
-    result = process_new_papers(limit)
+    result = process_papers_batch(limit)
     return {"status": "completed", "result": result}
-
-@router.post("/report/daily")
-async def generate_daily_report_endpoint():
-    """Generate daily report"""
-    from app.reports_job import generate_daily_report
-    report = generate_daily_report()
-    return {"status": "completed", "report_length": len(report)}
-
-@router.post("/report/weekly")
-async def generate_weekly_report_endpoint():
-    """Generate weekly report"""
-    from app.reports_job import generate_weekly_report
-    report = generate_weekly_report()
-    return {"status": "completed", "report_length": len(report)}
-
-@router.post("/email/test")
-async def send_test_email(to_email: str):
-    """Send test email"""
-    from app.notifications import send_email
-    success = send_email(to_email, "Test Email", "This is a test email from Paper Search API")
-    return {"status": "sent" if success else "failed"}
 
 @router.get("/status")
 async def job_status():
-    """Get job status"""
+    """Get processing status"""
     from app.database import SessionLocal
     from app.models import Paper
-    
+
     db = SessionLocal()
     try:
         total = db.query(Paper).count()
         processed = db.query(Paper).filter(Paper.summary != None, Paper.summary != "").count()
-        unprocessed = total - processed
-        
         return {
             "total_papers": total,
             "processed": processed,
-            "unprocessed": unprocessed
+            "unprocessed": total - processed,
         }
     finally:
         db.close()
@@ -85,13 +58,10 @@ async def scheduler_status():
     """Get scheduler status"""
     try:
         from app.scheduler import scheduler
-        jobs = []
-        for job in scheduler.get_jobs():
-            jobs.append({
-                "id": job.id,
-                "name": job.name,
-                "next_run": str(job.next_run_time) if job.next_run_time else None
-            })
+        jobs = [
+            {"id": job.id, "name": job.name, "next_run": str(job.next_run_time) if job.next_run_time else None}
+            for job in scheduler.get_jobs()
+        ]
         return {"status": "running", "jobs": jobs}
     except Exception as e:
         return {"status": "not_running", "error": str(e)}

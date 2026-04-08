@@ -70,9 +70,8 @@ def add(doi):
 @click.option('--ids', help='Comma-separated paper IDs to process (e.g., 1,2,3)')
 def process(limit, ids):
     """Process unprocessed papers (classify + summarize)"""
-    from app.pipeline import process_new_papers
-    from app.orchestrator import process_paper
-    
+    from app.services.processing import process_paper, process_papers_batch
+
     if ids:
         paper_ids = [int(id.strip()) for id in ids.split(',')]
         console.print(f"[cyan]Processing {len(paper_ids)} papers...[/cyan]")
@@ -93,7 +92,7 @@ def process(limit, ids):
             console.print(f"[yellow]⚠ Errors: {errors}[/yellow]")
     else:
         console.print(f"[cyan]Processing up to {limit} papers...[/cyan]")
-        result = process_new_papers(limit)
+        result = process_papers_batch(limit)
         console.print(f"[green]✓ Processed: {result['processed']}[/green]")
         if result['errors'] > 0:
             console.print(f"[yellow]⚠ Errors: {result['errors']}[/yellow]")
