@@ -66,10 +66,10 @@ class PubmedScraper(BaseScraper):
                 pmid = article.find(".//PMID").text
                 
                 title_elem = article.find(".//ArticleTitle")
-                title = title_elem.text if title_elem is not None else "No title"
-                
+                title = "".join(title_elem.itertext()) if title_elem is not None else "No title"
+
                 abstract_elem = article.find(".//AbstractText")
-                abstract = abstract_elem.text if abstract_elem is not None else "No abstract available"
+                abstract = "".join(abstract_elem.itertext()) if abstract_elem is not None else "No abstract available"
                 
                 # Authors
                 authors = []
@@ -91,6 +91,9 @@ class PubmedScraper(BaseScraper):
                 month = month_map.get(month, month if month.isdigit() else "01")
                 
                 published = datetime.strptime(f"{year}-{month}-{day}", "%Y-%m-%d")
+                # Cap future placeholder dates (epub-ahead-of-print) at today
+                if published > datetime.utcnow():
+                    published = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
                 
                 papers.append({
                     "id": f"PMID:{pmid}",

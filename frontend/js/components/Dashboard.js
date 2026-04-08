@@ -3,7 +3,8 @@ import { api } from '../api.js';
 export async function Dashboard() {
     try {
         const stats = await api.get('/stats');
-        const recentPapers = await api.get('/papers?limit=5');
+        const papersResp = await api.get('/papers?limit=5');
+        const recentPapers = papersResp.papers || [];
 
         return `
             <h2>Dashboard</h2>
@@ -21,7 +22,7 @@ export async function Dashboard() {
                     <div class="value">${stats.papers_this_week || 0}</div>
                 </div>
             </div>
-            
+
             <div class="card">
                 <h3>Recent Papers</h3>
                 <table>
@@ -36,7 +37,7 @@ export async function Dashboard() {
                         ${recentPapers.map(p => `
                             <tr>
                                 <td><a href="#paper/${p.id}">${p.title}</a></td>
-                                <td>${p.category || 'Uncategorized'}</td>
+                                <td>${p.categories && p.categories.length ? p.categories[0].name : 'Uncategorized'}</td>
                                 <td>${new Date(p.published_date).toLocaleDateString()}</td>
                             </tr>
                         `).join('')}

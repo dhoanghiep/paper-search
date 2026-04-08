@@ -90,7 +90,7 @@ def scheduler():
 @click.option('--source', type=click.Choice(['biorxiv', 'pubmed', 'all']), default='all', help='Source to scrape')
 @click.option('--max-results', type=int, help='Maximum papers to fetch (default: use config)')
 @click.option('--days-back', type=int, help='Days to look back for bioRxiv (default: use config)')
-@click.option('--query', type=str, help='Search query for PubMed (default: use config)')
+@click.option('--query', type=str, help='Keyword filter for scraping (bioRxiv: client-side filter; PubMed: server-side query)')
 def trigger_scrape(source, max_results, days_back, query):
     """Manually trigger scraping with custom options"""
     import asyncio
@@ -114,12 +114,17 @@ def trigger_scrape(source, max_results, days_back, query):
                 if src == 'biorxiv':
                     max_res = max_results or settings.BIORXIV_SCRAPE_MAX
                     days = days_back or settings.BIORXIV_DAYS_BACK
-                    
-                    console.print(f"[cyan]bioRxiv: {max_res} papers, last {days} days[/cyan]")
+                    biorxiv_query = query or settings.BIORXIV_SCRAPE_QUERY or None
+
+                    if biorxiv_query:
+                        console.print(f"[cyan]bioRxiv: up to {max_res} papers, last {days} days, query='{biorxiv_query}'[/cyan]")
+                    else:
+                        console.print(f"[cyan]bioRxiv: {max_res} papers, last {days} days[/cyan]")
                     scraper = BiorxivScraper()
                     papers = asyncio.run(scraper.fetch_recent_papers(
                         max_results=max_res,
-                        days_back=days
+                        days_back=days,
+                        query=biorxiv_query
                     ))
                     saved = scraper.save_papers(db, papers)
                     console.print(f"[green]✓ bioRxiv: fetched {len(papers)}, saved {saved}[/green]\n")

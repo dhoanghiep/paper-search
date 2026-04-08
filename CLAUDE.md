@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Environment
+
+**All Python commands must use the conda base environment.** There is no `venv` in this project.
+
+- Python interpreter: `/Users/danghiep/miniforge3/bin/python`
+- CLI entry point: `/Users/danghiep/miniforge3/bin/python -m app.cli_main` (or `./paper` if it resolves correctly)
+- Never use `source venv/bin/activate` or `python3` — always use the full miniforge path or prefix commands with the miniforge Python.
+
 ## What This Project Does
 
 Paper Search is an AI-powered research paper aggregator that scrapes papers from bioRxiv, PubMed, and arXiv, then uses Google Gemini to classify them into 18 categories and generate summaries. It exposes a FastAPI REST backend, a Vanilla JS frontend, and a Click-based CLI.

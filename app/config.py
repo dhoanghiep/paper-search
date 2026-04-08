@@ -25,8 +25,9 @@ class Settings:
     # Daily Scraping Configuration
     BIORXIV_SCRAPE_MAX: int = 1000  # Fetch up to 1000 papers
     BIORXIV_DAYS_BACK: int = 30      # From last 30 days (1 month)
-    PUBMED_SCRAPE_QUERY: str = "longread"  # Search query
+    PUBMED_SCRAPE_QUERY: str = "longread OR transcriptomic OR acute lymphoblastic leukemia OR acute myeloid leukemia"  # Search query
     PUBMED_SCRAPE_MAX: int = 1000   # Fetch up to 1000 papers
+    BIORXIV_SCRAPE_QUERY: str = os.getenv("BIORXIV_SCRAPE_QUERY", "")  # Keyword filter; empty = no filtering
     
     # Email Configuration
     EMAIL_HOST: str = os.getenv("EMAIL_HOST", "smtp.gmail.com")

@@ -1,8 +1,8 @@
-import { Dashboard } from './components/Dashboard.js';
-import { PapersList } from './components/PapersList.js';
-import { PaperDetail } from './components/PaperDetail.js';
-import { Categories } from './components/Categories.js';
-import { Reports } from './components/Reports.js';
+import { Dashboard } from './components/Dashboard.js?v=3';
+import { PapersList } from './components/PapersList.js?v=3';
+import { PaperDetail } from './components/PaperDetail.js?v=3';
+import { Categories } from './components/Categories.js?v=3';
+import { Reports } from './components/Reports.js?v=3';
 
 const app = document.getElementById('app');
 

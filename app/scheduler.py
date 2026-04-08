@@ -21,8 +21,9 @@ def scrape_all_sources():
             logger.info(f"Scraping bioRxiv (all papers from last {settings.BIORXIV_DAYS_BACK} days)...")
             biorxiv_scraper = BiorxivScraper()
             biorxiv_papers = asyncio.run(biorxiv_scraper.fetch_recent_papers(
-                max_results=settings.BIORXIV_SCRAPE_MAX, 
-                days_back=settings.BIORXIV_DAYS_BACK
+                max_results=settings.BIORXIV_SCRAPE_MAX,
+                days_back=settings.BIORXIV_DAYS_BACK,
+                query=settings.BIORXIV_SCRAPE_QUERY or None
             ))
             saved = biorxiv_scraper.save_papers(db, biorxiv_papers)
             logger.info(f"bioRxiv: fetched {len(biorxiv_papers)}, saved {saved} new papers")

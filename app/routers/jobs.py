@@ -12,8 +12,10 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 async def trigger_scrape(source: str = "biorxiv", max_results: int = 10, query: str = None, days_back: int = 30, db: Session = Depends(get_db)):
     """Manually trigger scraping from biorxiv or pubmed"""
     if source == "biorxiv":
+        from app.config import settings
+        biorxiv_query = query or settings.BIORXIV_SCRAPE_QUERY or None
         scraper = BiorxivScraper()
-        papers = await scraper.fetch_recent_papers(max_results, days_back=days_back)
+        papers = await scraper.fetch_recent_papers(max_results, days_back=days_back, query=biorxiv_query)
     elif source == "pubmed":
         scraper = PubmedScraper()
         papers = await scraper.fetch_recent_papers(max_results, query or "longread")

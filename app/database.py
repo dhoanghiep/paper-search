@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://paper_user:paper_pass@localhost:5432/paper_search")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./paper_search.db")
 
 # SQLite requires check_same_thread=False
 connect_args = {}
